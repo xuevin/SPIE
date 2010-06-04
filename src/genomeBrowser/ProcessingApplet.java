@@ -77,8 +77,7 @@ public class ProcessingApplet extends PApplet{
 					int lengthScaled=(int) map(exons.getLength(),0,isoform.getLength(),0,800);
 					rect(startScaled,yPosition,lengthScaled,20);
 				}
-				
-				yPosition +=25;
+				yPosition +=30;
 			}
 		}
 	}
