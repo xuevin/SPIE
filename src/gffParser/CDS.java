@@ -1,4 +1,4 @@
-package genomeBrowser;
+package gffParser;
 
 public class CDS extends GFF3 {
 

@@ -1,4 +1,4 @@
-package genomeBrowser;
+package gffParser;
 
 import java.util.HashMap;
 

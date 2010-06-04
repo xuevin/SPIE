@@ -1,13 +1,15 @@
-package genomeBrowser;
+package gffParser;
+
+import genomeBrowser.IDHolder;
 
 import java.util.TreeMap;
 
 
 public class MRNA extends GFF3 implements IDHolder{
-	StartCodon startCodon;
-	StopCodon stopCodon;
-	TreeMap<Integer, CDS> treeCDS;
-	TreeMap<Integer, Exon> treeExon;
+	private StartCodon startCodon;
+	private StopCodon stopCodon;
+	private TreeMap<Integer, CDS> treeCDS;
+	private TreeMap<Integer, Exon> treeExon;
 	private String ID;
 
 	public MRNA(String col1, String col2, String col3, String col4,

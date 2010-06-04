@@ -1,4 +1,6 @@
-package genomeBrowser;
+package gffParser;
+
+import genomeBrowser.IDHolder;
 
 import java.io.BufferedReader;
 import java.io.IOException;

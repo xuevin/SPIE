@@ -1,5 +1,9 @@
 package genomeBrowser;
 
+import gffParser.CDS;
+import gffParser.Exon;
+import gffParser.MRNA;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.TreeMap;
@@ -66,7 +70,7 @@ public class ProcessingApplet extends PApplet{
 					int lengthScaled=(int) map(isoform.getStartCodon().getLength(),0,lengthOfGene,0,800);
 					rect(startScaled,yPosition,lengthScaled,15);
 				}
-				if(isoform.stopCodon!=null){
+				if(isoform.getStopCodon()!=null){
 					int startScaled = (int) map(isoform.getStopCodon().getStart()-startOfGene,0,lengthOfGene,0,800);
 					int lengthScaled=(int) map(isoform.getStopCodon().getLength(),0,lengthOfGene,0,800);
 					rect(startScaled,yPosition,lengthScaled,15);

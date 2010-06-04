@@ -1,4 +1,4 @@
-package genomeBrowser;
+package gffParser;
 
 public class Exon extends GFF3{
 

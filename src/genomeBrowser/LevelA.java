@@ -1,17 +1,15 @@
 package genomeBrowser;
 
+import gffParser.GFF3Parser;
+
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Label;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.ArrayList;
 
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;

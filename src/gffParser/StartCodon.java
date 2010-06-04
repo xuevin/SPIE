@@ -1,4 +1,5 @@
-package genomeBrowser;
+package gffParser;
+
 
 public class StartCodon extends GFF3{
 	
