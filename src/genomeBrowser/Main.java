@@ -11,7 +11,7 @@ public class Main {
 		JFrame frame= new JFrame("Genome Broswer");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		frame.add(new LevelA());
+		frame.add(new JSpliceViewGUI());
 		
 		//Start the JFrame
 		frame.pack();
