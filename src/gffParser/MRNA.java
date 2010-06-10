@@ -46,7 +46,7 @@ public class MRNA extends GFF3 implements IDHolder{
 	public TreeMap<Integer,CDS> getCDS(){
 		return treeCDS;
 	}
-	public TreeMap<Integer,Exon> getExon(){
+	public TreeMap<Integer,Exon> getExons(){
 		return treeExon;
 		
 	}

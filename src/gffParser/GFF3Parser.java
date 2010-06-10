@@ -9,10 +9,7 @@ import java.util.HashMap;
 public class GFF3Parser {
 	private HashMap<String, IDHolder> hashOfIDHolders;
 	private HashMap<String, Gene> hashOfGenes;
-	
 	public GFF3Parser(){
-		hashOfIDHolders = new HashMap<String, IDHolder>();
-		hashOfGenes = new HashMap<String,Gene>();
 	}
 	
 	/**
@@ -20,7 +17,10 @@ public class GFF3Parser {
 	 * 
 	 * @param in is the buffered reader
 	 */
-	public void parse(BufferedReader in) {
+	public String parse(BufferedReader in) {
+		hashOfIDHolders = new HashMap<String, IDHolder>();
+		hashOfGenes = new HashMap<String,Gene>();
+		
 		String line;
 		try {
 			while((line=in.readLine()) != null){
@@ -29,14 +29,18 @@ public class GFF3Parser {
 				}else if (line!=null){
 					String[] temp = line.split("\t");
 					//Parser returns a hash of Genes.
-					
+					if(temp.length<9){
+						System.err.println("GFF3 File does not have 9 columns");
+						hashOfGenes=null;
+						return "The current file is not in the correct format.\n Please check it again.";
+					}
 					String type = temp[2]; 
 					//If type is gene, make a gene
 					if(type.equals("gene")){
 						Gene newGene = new Gene(temp[0],temp[1],temp[2],temp[3],temp[4],temp[5],
 								temp[6],temp[7],temp[8]);
 						hashOfIDHolders.put(newGene.getAttributes().get("ID"),newGene);
-						hashOfGenes.put(newGene.getAttributes().get("ID"),newGene);
+						hashOfGenes.put(newGene.getAttributes().get("Name"),newGene);
 					}else if(type.equals("mRNA")){
 						MRNA newMRNA = new MRNA(temp[0],temp[1],temp[2],temp[3],temp[4],temp[5],
 								temp[6],temp[7],temp[8]);
@@ -59,8 +63,8 @@ public class GFF3Parser {
 								temp[4],temp[5],temp[6],temp[7],temp[8]);
 						hashOfIDHolders.get(newExon.getAttributes().get("Parent")).addChild(newExon);
 					}else{
-						System.err.println("An unknown type was located in the GFF file");
-						System.err.println(type);
+						hashOfGenes=null;
+						return "An unknown type was located in the GFF file\n" + type;
 					}		
 				}
 			}
@@ -68,7 +72,7 @@ public class GFF3Parser {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		// TODO Auto-generated method stub
+		return "Success";
 	}
 	public HashMap<String, Gene> getGenes(){
 		return hashOfGenes;

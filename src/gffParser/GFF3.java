@@ -56,9 +56,21 @@ public class GFF3 {
 	public String getType(){
 		return type;
 	}
+	
+	/**
+	 * Gets the start. (Inclusive)
+	 * 
+	 * @return the start
+	 */
 	public int getStart(){
 		return start;
 	}
+	
+	/**
+	 * Gets the end. (Inclusive)
+	 * 
+	 * @return the end
+	 */
 	public int getEnd(){
 		return end;
 	}
@@ -74,6 +86,12 @@ public class GFF3 {
 	public HashMap<String, String> getAttributes(){
 		return attributes;
 	}
+	
+	/**
+	 * Gets the length of the sequence
+	 * 
+	 * @return the length
+	 */
 	public int getLength(){
 		return (end-start)+1;
 	}
