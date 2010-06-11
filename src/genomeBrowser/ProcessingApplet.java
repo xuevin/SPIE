@@ -5,12 +5,10 @@ import gffParser.Exon;
 import gffParser.Gene;
 import gffParser.MRNA;
 
-import java.awt.font.NumericShaper;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -27,34 +25,49 @@ public class ProcessingApplet extends PApplet{
 	private static final long serialVersionUID = 1L;
 	private int width;
 	private int height;
-	private boolean shortReadsVisible;
-	private boolean geneVisible,tightIsoformsVisible, isCodingStrand,weightedIsoformVisible,errorBarsVisible;
+	private boolean tightIsoformsVisible;
+	private boolean shortReadsPlotVisible,geneIsoformsVisible, isCodingStrand,weightedIsoformVisible,errorBarsVisible
+					,referenceIsoformVisible,splicingLinesVisible,isoformLabelsVisible,selectedIsoformsVisible;
 	private TreeSet<Integer> allScaledEndCoords;
-	private boolean splicingLinesVisible;
 	private List<Line> linesToDraw;
-	private List<GraphColumn> scaledDensityPlot;
-	private java.util.List<Rectangle> rectanglesToDraw,weightedRectangles;
-	private java.util.List<ErrorBars> errorBars;
+	private List<GraphColumn> isformSpecificDensityPlot;
+	private List<Rectangle> geneIsoforms,weightedIsoform,referenceIsoform,selectedIsoforms;
+	private List<ErrorBars> errorBars;
+	private List<Label> isoformLabels;
 	private HashMap<Integer, Integer> absoluteDensityMap;
-	private int yScale;
-	private int graphYStart;
+	private HashMap<Integer,GraphColumn>scaledShortReadsPlot;
+	private int yScale,xScale;
+	private int graphYStart,graphXEnd,graphXStart,graphYEnd,shortReadPlotYStart;
 	
+
 	
 	
 	public ProcessingApplet(int iWidth, int iHeight){
 		width=iWidth;
 		height=iHeight;
-		geneVisible = false;
-		tightIsoformsVisible = false;
-		shortReadsVisible=false;
-		weightedIsoformVisible=false;
 		isCodingStrand=true;
-		splicingLinesVisible=false;
-		linesToDraw=null;
-		scaledDensityPlot=null;
-		rectanglesToDraw=null;
-		graphYStart = 500;
 		
+		geneIsoformsVisible = false;
+		tightIsoformsVisible = false;
+		shortReadsPlotVisible=false;
+		weightedIsoformVisible=false;
+		splicingLinesVisible=false;
+		referenceIsoformVisible=false;
+		isoformLabelsVisible=true;
+		selectedIsoformsVisible=false;
+		
+		absoluteDensityMap=null;
+		linesToDraw=null;
+		geneIsoforms=null;
+		scaledShortReadsPlot=null;
+		selectedIsoforms=null;
+		
+		isformSpecificDensityPlot=null;
+		graphYStart = 500;
+		graphYEnd = 40;
+		graphXStart = 200;
+		graphXEnd = 900;
+		shortReadPlotYStart =600;
 	
 	}
 	public void setup(){
@@ -76,10 +89,13 @@ public class ProcessingApplet extends PApplet{
 		
 		drawSplicingLines();
 		drawTightIsoforms();
-		drawGene();
 		drawShortReads();
+		drawGeneIsoforms();
 		drawWeightedIsoforms();
 		drawErrorBars();
+		drawReferenceIsoform();
+		drawIsoformLabels();
+		drawSelectedIsoforms();
 		
 	}
 	public void setNewSize(int iHeight, int iWidth){
@@ -122,42 +138,47 @@ public class ProcessingApplet extends PApplet{
 	}
 	public void flip() {
 		isCodingStrand=!isCodingStrand;
-		if(rectanglesToDraw!=null){
-			for(Rectangle rectangle:rectanglesToDraw){
-				rectangle.setScaledXCoord(800-(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+		if(geneIsoforms!=null){
+			for(Rectangle rectangle:geneIsoforms){
+				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
 			}	
 		}
 		if(linesToDraw!=null){
 			for(Line line:linesToDraw){	
-				line.setXCoordStart(800-line.getXCoordStart());
-				line.setXCoordEnd(800-line.getXCoordEnd());
+				line.setXCoordStart(reverse(line.getXCoordStart()));
+				line.setXCoordEnd(reverse(line.getXCoordEnd()));
 			}	
 		}
-		if(scaledDensityPlot!=null){
-			for(GraphColumn column:scaledDensityPlot){
-				column.setScaledX(800-column.getScaledX());
+		if(scaledShortReadsPlot!=null){
+			for(GraphColumn column:scaledShortReadsPlot.values()){
+				column.setScaledX(reverse(column.getScaledX()));
 			}
 		}
-		if(weightedRectangles!=null){
-			for(Rectangle rectangle:weightedRectangles){
-				rectangle.setScaledXCoord(800-(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+		if(weightedIsoform!=null){
+			for(Rectangle rectangle:weightedIsoform){
+				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
 			}
 		}
 		if(errorBars!=null){
 			for(ErrorBars errorBar:errorBars){
-				errorBar.setScaledXCoord(800-errorBar.getScaledXPosition());
+				errorBar.setScaledXCoord(reverse(errorBar.getScaledXPosition()));
+			}
+		}
+		if(referenceIsoform!=null){
+			for(Rectangle rectangle:referenceIsoform){
+				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
 			}
 		}
 		
 	}
 	public void setShortReadsVisible(boolean selected) {
-		shortReadsVisible=selected;	
+		shortReadsPlotVisible=selected;	
 	}
 	public void setWeightedIsoformsVisible(boolean selected) {
 		weightedIsoformVisible=selected;	
 	}
 	public void setGeneVisible(boolean selected) {
-		geneVisible=selected;
+		geneIsoformsVisible=selected;
 	}
 	public void setSpliceLinesVisible(boolean selected) {
 		splicingLinesVisible=selected;
@@ -165,24 +186,33 @@ public class ProcessingApplet extends PApplet{
 	public void setErrorBarsVisible(boolean selected){
 		errorBarsVisible=selected;
 	}
+	public void setReferenceIsoformVisible(boolean selected){
+		referenceIsoformVisible=selected;
+	}
+	public void setSelectedIsoformsVisible(boolean selected){
+		selectedIsoformsVisible=selected;
+	}
 	/**
 	 * Show new isoform.
 	 * 
 	 * @param draws the gene you want to see
 	 */
 	public synchronized void loadGene(Gene gene) {
+		System.out.println("Call Made to Load Gene");
 		Collection<MRNA> isoforms;
 		isoforms = gene.getMRNA().values();
 		int absoluteLengthOfGene = gene.getLength();
 		int absoluteStartOfGene= gene.getStart();
-		rectanglesToDraw = Collections.synchronizedList(new ArrayList<Rectangle>());
+		int absoluteEndOfGene=gene.getEnd();
+		geneIsoforms = Collections.synchronizedList(new ArrayList<Rectangle>());
 		linesToDraw = Collections.synchronizedList(new ArrayList<Line>());
+		isoformLabels = Collections.synchronizedList(new ArrayList<Label>());
 		isCodingStrand = gene.getStrand();
 		
 		
 		//The code below fill in rectanglesToDraw with scaled values
 		if(isoforms!=null){
-			int yPosition = 40;	
+			int yPosition = graphYEnd;	
 			for(MRNA isoform: isoforms){
 				
 				//Grey
@@ -191,35 +221,34 @@ public class ProcessingApplet extends PApplet{
 				ArrayList<Rectangle> sortedRectangles= new ArrayList<Rectangle>();
 				
 				for(Exon exons :isoform.getExons().values()){
-					int scaledLength=(int) map(exons.getLength(),0,absoluteLengthOfGene,0,800);
-					int scaledStart;
+					float scaledLength= map(exons.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+					float scaledStart;
 					
 					if(isCodingStrand){
-						scaledStart = (int) map(exons.getStart()-absoluteStartOfGene,0,absoluteLengthOfGene,0,800);
+						scaledStart = map(exons.getStart(),absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd);
 					}else{
-						scaledStart = 800 - ((int) map(exons.getStart()+exons.getLength()
-								-absoluteStartOfGene,0,absoluteLengthOfGene,0,800));
+						scaledStart = reverse(map(exons.getEnd(),absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd));
 					}
 					Rectangle temp = new Rectangle(scaledStart, yPosition+5, scaledLength, 10,exons.getStart(),exons.getEnd(), color);
-					rectanglesToDraw.add(temp);
+					
+					geneIsoforms.add(temp);
 					sortedRectangles.add(temp);					
 				}
 					
 				color = color(150); //Light Grey
 				for(CDS cds :isoform.getCDS().values()){
-					int scaledLength=(int) map(cds.getLength(),0,absoluteLengthOfGene,0,800);
-					int scaledStart;
+					//FIXME <<Slight issue with mapping
+					float scaledLength= map(cds.getLength(),0,absoluteLengthOfGene,1,graphXEnd-graphXStart);
+					float scaledStart;
 					if(isCodingStrand){
-						scaledStart = (int) map(cds.getStart()-absoluteStartOfGene,0,absoluteLengthOfGene,0,800);
+						scaledStart =  map(cds.getStart(),absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd);
 					}else{
-						scaledStart = 800 - ((int) map(cds.getStart()+cds.getLength()
-								-absoluteStartOfGene,0,absoluteLengthOfGene,0,800));
+						scaledStart = reverse(map(cds.getEnd(),absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd));
 					}
 					Rectangle temp = new Rectangle(scaledStart, yPosition, scaledLength, 20,cds.getStart(),cds.getEnd(), color);
-					rectanglesToDraw.add(temp);
+					geneIsoforms.add(temp);
 					//sortedRectangles.add(temp);					
 				}
-				
 				//****************************************
 				//************************
 				//******************
@@ -251,36 +280,36 @@ public class ProcessingApplet extends PApplet{
 
 				color = color(0,255,0, 100);//Green
 				if(isoform.getStartCodon()!=null){
-					int scaledLength=(int) map(isoform.getStartCodon().getLength(),0,absoluteLengthOfGene,0,800);
-					int scaledStart;
+					float scaledLength=map(isoform.getStartCodon().getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+					float scaledStart;
 					if(isCodingStrand){
-						scaledStart = (int) map(isoform.getStartCodon().getStart()
-								-absoluteStartOfGene,0,absoluteLengthOfGene,0,800);
+						scaledStart =  map(isoform.getStartCodon().getStart(),
+									absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd);
 					}else{
-						scaledStart = 800 - ((int) map(isoform.getStartCodon().getStart()+
-								isoform.getStartCodon().getLength()-absoluteStartOfGene,0,absoluteLengthOfGene,0,800)+scaledLength);
+						scaledStart = reverse(map(isoform.getStartCodon().getEnd(),
+								absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd));
 					}
-					rectanglesToDraw.add(new Rectangle(scaledStart, yPosition, scaledLength, 20,isoform.getStartCodon().getStart(),isoform.getStartCodon().getEnd(), color));	
+					geneIsoforms.add(new Rectangle(scaledStart, yPosition, scaledLength, 20,isoform.getStartCodon().getStart(),isoform.getStartCodon().getEnd(), color));	
 				}
 				if(isoform.getStopCodon()!=null){
-					int lengthScaled=(int) map(isoform.getStopCodon().getLength(),0,absoluteLengthOfGene,0,800);
-					int startScaled;
+					float lengthScaled= map(isoform.getStopCodon().getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+					float startScaled;
 					if(isCodingStrand){
-						startScaled = (int) map(isoform.getStopCodon().getStart()-absoluteStartOfGene,0,absoluteLengthOfGene,0,800);
+						startScaled = map(isoform.getStopCodon().getStart(),absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd);
 					}else{
-						startScaled = 800 - ((int) map(isoform.getStopCodon().getStart()
-								+isoform.getStopCodon().getLength()-absoluteStartOfGene,0,absoluteLengthOfGene,0,800)+lengthScaled);
+						startScaled = reverse(map(isoform.getStopCodon().getEnd(),
+								absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd));
 					}
-					rectanglesToDraw.add(new Rectangle(startScaled, yPosition, lengthScaled, 20,isoform.getStopCodon().getStart(),isoform.getStopCodon().getEnd(), color));
+					geneIsoforms.add(new Rectangle(startScaled, yPosition, lengthScaled, 20,isoform.getStopCodon().getStart(),isoform.getStopCodon().getEnd(), color));
 				}
+				isoformLabels.add(new Label(isoform.getId(), 0, yPosition+20));
 				yPosition +=30;
 			}
 		}
 	}
 	public synchronized void loadShortReads(ArrayList<SAMRecord> iShortReads,int iShortReadsStart,int iShortReadsEnd){
 		
-		
-		//ABSOLUTE Density Plot HASH
+		//First load an absolute density plot hash
 		absoluteDensityMap = new HashMap<Integer, Integer>();
 		for(int i = iShortReadsStart;i<=iShortReadsEnd;i++){
 			absoluteDensityMap.put(i,0);	
@@ -310,125 +339,111 @@ public class ProcessingApplet extends PApplet{
 					System.out.println("D"+cigarElement.getLength());
 				}
 					
-			}
-			
-			
-			//**
-//			for(int i = samRecord.getAlignmentStart();i<=samRecord.getAlignmentEnd(); i++){
-//				if(absoluteDensityMap.get(i)==null){
-//					System.err.println("THIS SHOULDNT HAPPEN");
-//				}else{
-//					 int prev = absoluteDensityMap.get(i);
-//					 prev++;
-//					 absoluteDensityMap.put(i, prev);	 
-//				}
-//				
-//			}
-			
+			}	
 		}
 		
-		//fillDensityPlot(iShortReads,iShortReadsStart,iShortReadsEnd);
-		fillDensityPlot(absoluteDensityMap,iShortReadsStart,iShortReadsEnd);
+		fillScaledShortReadsPlot(absoluteDensityMap,iShortReadsStart,iShortReadsEnd);
 	}
-	//	private void fillDensityPlot(ArrayList<SAMRecord> iShortReads,int iShortReadsStart,int iShortReadsEnd) {
-	//		//Fills in an array Left to Right (You CAN use the index to indicate the pixel (from the left))
-	//		densityPlot = Collections.synchronizedList(new ArrayList<Line>());
-	//		//Make a line for every Pixel
-	//		for(int i =0;i<800;i++){
-	//			if(isCodingStrand){
-	//				densityPlot.add(new Line(i, 600, i, 600, color(0)));	
-	//			}else{
-	//				densityPlot.add(new Line(800-i, 600, 800-i, 600, color(0)));
-	//			}	
-	//		}
-	//		
-	//		ArrayList<SAMRecord> shortReads=iShortReads;		
-	//		int shortReadsStart = iShortReadsStart;
-	//		int shortReadsEnd = iShortReadsEnd;
-	//		
-	//		for(SAMRecord shortRead :shortReads){
-	//			int scaledStart = (int) map(shortRead.getAlignmentStart(),shortReadsStart,shortReadsEnd,0,800);
-	//			int scaledEnd = (int) map(shortRead.getAlignmentStart(), shortReadsStart, shortReadsEnd, 0, 800);
-	//			for(int i=scaledStart;i<=scaledEnd;i++){
-	//				densityPlot.get(i).incrementHeight(5);
-	//			}
-	//			//line(scaledStart, yPosition, scaledEnd, yPosition);
-	//			//yPosition--;
-	//		}
-	//		strokeWeight(1);
-	//		shortReadsVisible=true;
-	//		
-	//	}
-		public synchronized void loadWeightedIsoform(MRNA mrna,int startOfGene,int lengthOfGene) {
-			//This is under the condition that you already have shortReadData
-			//Find the average number of reads for each exon exon/CDS based on the positions on the graph
-			
-			weightedRectangles = Collections.synchronizedList(new ArrayList<Rectangle>());
+	/**
+	 * @param mrna is the isoform the user will view
+	 * @param startOfGene is the start coordinates of the gene (inclusive)
+	 * @param lengthOfGene is the length of the gene (inclusive)
+	 * 
+	 * This function should only be called after the absoluteDensityPlot is loaded through the loadShortReadsFunction
+	 */
+	public synchronized void loadWeightedIsoform(MRNA mrna,int startOfGene,int lengthOfGene) {
+		//Under the condition that the loadShortReads function has already been calleld
+		if(absoluteDensityMap!=null){
+			weightedIsoform = Collections.synchronizedList(new ArrayList<Rectangle>());
+			referenceIsoform=Collections.synchronizedList(new ArrayList<Rectangle>());
 			errorBars = Collections.synchronizedList(new ArrayList<ErrorBars>());
+			int absoluteLengthOfGene = lengthOfGene;
+			int absoluteStartOfGene= startOfGene;
+			int absoluteEndOfGene= startOfGene+lengthOfGene-1; //Last coordinate
+			
 			
 			//Grey
 			int color = color(40);//DarkGrey
-			int yPosition = graphYStart;
+			float yPosition = graphYStart;
 			for(Exon exons :mrna.getExons().values()){
-				float lengthScaled=map(exons.getLength(),0,lengthOfGene,0,800);
-				float startScaled;
-				
-				if(isCodingStrand){
-					startScaled = (int) map(exons.getStart()-startOfGene,0,lengthOfGene,0,800);
-				}else{
-					startScaled = 800 - ((int) map(exons.getStart()+exons.getLength()
-							-startOfGene,0,lengthOfGene,0,800));
-				}
-				
-//				//For the region mentioned average it
+				//Find the average of the region in mention
 				int sum = 0;
 				for(Integer heightAtPosition:getArrayOfHeights(exons.getStart(), exons.getEnd())){
 					sum+=heightAtPosition;
 				}
-				
 				float average = ((float)sum/exons.getLength());
 				
-				Rectangle temp = new Rectangle(startScaled, yPosition-average, lengthScaled,10,
-						exons.getStart(),exons.getEnd(), color);
-				weightedRectangles.add(temp);
-				
-				//TODO (Check if this is right)
-				errorBars.add(new ErrorBars(getArrayOfHeights(exons.getStart(),exons.getEnd()), 
-						(startScaled+lengthScaled/2), yPosition-average));
-			}
-				
-			color = color(150); //Light Grey
-			for(CDS cds :mrna.getCDS().values()){
-				float lengthScaled=map(cds.getLength(),0,lengthOfGene,0,800);
+				//Scale the length and start
+				float lengthScaled=map(exons.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
 				float startScaled;
 				if(isCodingStrand){
-					startScaled = map(cds.getStart()-startOfGene,0,lengthOfGene,0,800);
+					startScaled = map(exons.getStart(),absoluteStartOfGene,absoluteEndOfGene,
+							graphXStart,graphXEnd);
 				}else{
-					startScaled = 800 - map(cds.getStart()+cds.getLength()
-							-startOfGene,0,lengthOfGene,0,800);
+					startScaled = reverse(map(exons.getEnd(),absoluteStartOfGene,absoluteEndOfGene,
+							graphXStart,graphXEnd));
 				}
-				//For the region mentioned average it
-				int sum = 0;
-				for(Integer heightAtPosition:getArrayOfHeights(cds.getStart(), cds.getEnd())){
-					sum+=heightAtPosition;
-				}
-				float average = ((float)sum/cds.getLength());
-				
-				Rectangle temp = new Rectangle(startScaled, yPosition-average, lengthScaled,10,cds.getStart(),cds.getEnd(), color);
-				weightedRectangles.add(temp);
-				errorBars.add(new ErrorBars(getArrayOfHeights(cds.getStart(),cds.getEnd()), 
+				//Add it to the arrays
+				Rectangle temp = new Rectangle(startScaled, yPosition-average, lengthScaled,10,
+						exons.getStart(),exons.getEnd(), color);
+				weightedIsoform.add(temp);
+				errorBars.add(new ErrorBars(getArrayOfHeights(exons.getStart(),exons.getEnd()),
 						(startScaled+lengthScaled/2), yPosition-average));
+				Rectangle temp2 = new Rectangle(startScaled, 30, lengthScaled,10,exons.getStart(),
+						exons.getEnd(), color);
+				referenceIsoform.add(temp2);
 			}
+
+			color = color(150); //Light Grey
+			for(CDS cds:mrna.getCDS().values()){
+				float lengthScaled=map(cds.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+				float startScaled;
+				if(isCodingStrand){
+					startScaled = map(cds.getStart(),absoluteStartOfGene,absoluteEndOfGene,
+							graphXStart,graphXEnd);
+				}else{
+					startScaled = reverse(map(cds.getEnd(),absoluteStartOfGene,absoluteEndOfGene,
+							graphXStart,graphXEnd));
+				}
+				
+				//Get the rectangle that is nearest to the xCoordinate to get the appropriate height
+				yPosition=getRectangleNearestToXCoord(weightedIsoform,startScaled).getScaledYCoord();
+				Rectangle temp = new Rectangle(startScaled, yPosition, lengthScaled,10,
+						cds.getStart(),cds.getEnd(), color);
+				weightedIsoform.add(temp);
+				Rectangle temp2 = new Rectangle(startScaled, 30, lengthScaled,10,
+						cds.getStart(),cds.getEnd(), color);
+				referenceIsoform.add(temp2);
+			}	
 		}
-	private void fillDensityPlot(HashMap<Integer, Integer> iAbsoluteDensity,int iShortReadsStart,int iShortReadsEnd){
-		System.out.print(iShortReadsEnd +" " +iShortReadsStart);
-		scaledDensityPlot = Collections.synchronizedList(new ArrayList<GraphColumn>());
+		
+	}
+	public synchronized void loadArrayOfIsoforms(ArrayList<MRNA> iMRNAArray){
+		for(MRNA mrna:iMRNAArray){
+			selectedIsoforms=Collections.synchronizedList(new ArrayList<Rectangle>());
+			
+		}
+		
+	}
+	public void setYScale(int iYScale){
+		yScale=iYScale;
+	}
+	public void clearWeightedIsoforms(){
+		weightedIsoform=null;
+	}
+	private void fillInIsoformSpecificDensityPlot(ArrayList<SAMRecord> iShortReads,MRNA iMRNA) {
+		isformSpecificDensityPlot= Collections.synchronizedList(new ArrayList<GraphColumn>());
+			
+	}
+	private void fillScaledShortReadsPlot(HashMap<Integer, Integer> iAbsoluteDensity,int geneStart,int geneEnd){
+		System.out.print(geneStart +" " +geneEnd);
+		scaledShortReadsPlot = new HashMap<Integer, GraphColumn>();
 		//Make a line for every Pixel
-		for(int i =0;i<=800;i++){
+		for(int i =graphXStart;i<=graphXEnd;i++){
 			if(isCodingStrand){
-				scaledDensityPlot.add(new GraphColumn(i, 600, 0, 0, 0));	
+				scaledShortReadsPlot.put(i,(new GraphColumn(i, shortReadPlotYStart, 0, 0, 0)));	
 			}else{
-				scaledDensityPlot.add(new GraphColumn(800-i, 600, 0, 0, 0));
+				scaledShortReadsPlot.put(i, (new GraphColumn(reverse(i), shortReadPlotYStart, 0, 0, 0)));
 			}	
 		}
 		int prevPixel = -1;
@@ -437,8 +452,8 @@ public class ProcessingApplet extends PApplet{
 		int frameAbsoluteStart=-1;
 		int frameAbsoluteEnd = -1;
 		
-		for(int i = iShortReadsStart;i<=iShortReadsEnd;i++){
-			int mappedPixel = (int) map(i,iShortReadsStart,iShortReadsEnd,0,800);
+		for(int i = geneStart;i<=geneEnd;i++){
+			int mappedPixel = (int) map(i,geneStart,geneEnd,graphXStart,graphXEnd);
 			//System.out.println(mappedPixel +"---Abs" + iAbsoluteDensity.get(i));
 			if(prevPixel==-1){
 				frameAbsoluteStart=i;
@@ -447,18 +462,18 @@ public class ProcessingApplet extends PApplet{
 				currentSum=iAbsoluteDensity.get(i);
 				prevPixel=mappedPixel;
 			}else if(mappedPixel!= prevPixel){
-				scaledDensityPlot.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
-				scaledDensityPlot.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
+				scaledShortReadsPlot.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
+				scaledShortReadsPlot.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
 				prevPixel=mappedPixel;
 				numberOfShortReads=1;
 				currentSum=iAbsoluteDensity.get(i);
 				frameAbsoluteStart=i;
 				frameAbsoluteEnd=i;
-			}else if(i==iShortReadsEnd){
+			}else if(i==geneEnd){
 				frameAbsoluteEnd=i;
 				numberOfShortReads++;
-				scaledDensityPlot.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
-				scaledDensityPlot.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
+				scaledShortReadsPlot.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
+				scaledShortReadsPlot.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
 			}else{	
 				currentSum+=iAbsoluteDensity.get(i);
 				frameAbsoluteEnd=i;
@@ -467,7 +482,7 @@ public class ProcessingApplet extends PApplet{
 //			System.out.println(i + "----"  + iAbsoluteDensity.get(i));
 		}
 		strokeWeight(1);
-		shortReadsVisible=true;
+		shortReadsPlotVisible=true;
 	}
 /**
 	 * Draws the splice lines that connect the exons and cds.
@@ -475,7 +490,7 @@ public class ProcessingApplet extends PApplet{
 	 * and linesToDraw is not null and rectanglesToDraw is not null.
 	 */
 	private void drawSplicingLines() {
-		if(splicingLinesVisible&&geneVisible&&linesToDraw!=null&&rectanglesToDraw!=null){
+		if(splicingLinesVisible&&geneIsoformsVisible&&linesToDraw!=null&&geneIsoforms!=null){
 			for(Line line:linesToDraw){
 				line(line.getXCoordStart(),line.getYCoordStart(),line.getXCoordEnd(),line.getYCoordEnd());
 			}	
@@ -486,90 +501,27 @@ public class ProcessingApplet extends PApplet{
 	 * Draws all the isoforms of a gene under the condition that genes are visible and rectanglesToDraw is not null. 
 	 * It iterates through the rectanglesToDraw
 	 */
-	private void drawGene(){
-		if(geneVisible&&rectanglesToDraw!=null){
-			for(Rectangle rectangle:rectanglesToDraw){
+	private void drawGeneIsoforms(){
+		if(geneIsoformsVisible&&geneIsoforms!=null){
+			for(Rectangle rectangle:geneIsoforms){
 				fill(rectangle.getColor());
 				rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());
 			}	
 		}
-		
+		fill(0);
 	}
 	
-	/**
-	 * Draws the short read plot under the condition that densityPlot is not null and shortReadsVisible is true.
-	 */
-	private void drawShortReads(){
-		if(scaledDensityPlot!=null && shortReadsVisible){
-			for(GraphColumn line:scaledDensityPlot){
-				stroke(0);
-				line(line.getScaledX(),line.getScaledYStart(),line.getScaledX(),line.getScaledYEnd());
-			}
-		}
-	}
 	private void drawTightIsoforms(){
-	//		if(tightIsoformsVisible && allScaledEndCoords!=null){
-	//			for(Integer currentEnd:allScaledEndCoords){
-	//				line(800-currentEnd,0,800-currentEnd,100);
-	//			}
-	//			int yPosition = 40;
-	//			for(MRNA isoform: isoforms){
-	//				fill(0,0,255, 100); //Blue
-	//				for(Exon exons :isoform.getExon().values()){
-	//					int startScaled = (int) map(exons.getStart()-startOfGene,0,lengthOfGene,0,800);
-	//					int lengthScaled=(int) map(exons.getLength(),0,lengthOfGene,0,800);
-	//					
-	//					if(isoform.getStrand()){
-	//						rect(startScaled,yPosition+5,lengthScaled,10);
-	//					}else{
-	//						rect(800-(startScaled+lengthScaled),yPosition+5,lengthScaled,10);
-	//					}
-	//							
-	//				}
-	//				fill(255,0,0); //Red
-	//				for(CDS cds :isoform.getCDS().values()){
-	//						int startScaled =(int) map(cds.getStart()-startOfGene, 0,lengthOfGene,0,800);
-	//						int lengthScaled=(int) map(cds.getLength(),0,lengthOfGene,0,800);
-	//						if(isoform.getStrand()){
-	//							rect(startScaled,yPosition,lengthScaled,20);
-	//						}else{
-	//							rect(800-(startScaled+lengthScaled),yPosition,lengthScaled,20);
-	//						}
-	//						
-	//				}
-	//				fill(0,255,0, 100);//Green
-	//				if(isoform.getStartCodon()!=null){
-	//					int startScaled = (int) map(isoform.getStartCodon().getStart()-startOfGene,0,lengthOfGene,0,800);
-	//					int lengthScaled=(int) map(isoform.getStartCodon().getLength(),0,lengthOfGene,0,800);
-	//					if(isoform.getStrand()){
-	//						rect(startScaled,yPosition,lengthScaled,20);
-	//					}else{
-	//						rect(800-(startScaled+lengthScaled),yPosition,lengthScaled,20);
-	//					}
-	//				}
-	//				if(isoform.getStopCodon()!=null){
-	//					int startScaled = (int) map(isoform.getStopCodon().getStart()-startOfGene,0,lengthOfGene,0,800);
-	//					int lengthScaled=(int) map(isoform.getStopCodon().getLength(),0,lengthOfGene,0,800);
-	//					if(isoform.getStrand()){
-	//						rect(startScaled,yPosition,lengthScaled,20);
-	//					}else{
-	//						rect(800-(startScaled+lengthScaled),yPosition,lengthScaled,20);
-	//					}
-	//				}
-	//				
-	//				yPosition +=30;
-	//			}
-	//		}	
-		}
+	}
 	
 	/**
 	 * Draws the weighted isoforms under the conditions that weightedIsoformVisible is true and weightedRectangles is not null
 	 */
 	private void drawWeightedIsoforms() {
-		if(weightedRectangles!=null && weightedIsoformVisible){
+		if(weightedIsoform!=null && weightedIsoformVisible){
 			drawGrid();
-			synchronized (weightedRectangles) {
-				for(Rectangle rectangle:weightedRectangles){
+			synchronized (weightedIsoform) {
+				for(Rectangle rectangle:weightedIsoform){
 					fill(rectangle.getColor());
 					float newScaledYCoord = graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
 					//Becasue the rectangle is drawn from the corner, subtract half its height;
@@ -582,83 +534,133 @@ public class ProcessingApplet extends PApplet{
 		fill(0);
 	}
 	
+	private void drawReferenceIsoform() {
+		if(referenceIsoform!=null && referenceIsoformVisible){
+			synchronized (weightedIsoform) {
+				for(Rectangle rectangle:referenceIsoform){
+					fill(rectangle.getColor());
+					rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());	
+				}
+			}
+				
+		}
+		
+		
+	}
+	private void drawSelectedIsoforms() {
+		if(selectedIsoforms!=null && selectedIsoformsVisible){
+			synchronized (selectedIsoforms) {
+				for(Rectangle rectangle:selectedIsoforms){
+					fill(rectangle.getColor());
+					rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());	
+				}
+			}
+				
+		}
+		
+	}
+	/**
+	 * Draws the short read plot under the condition that densityPlot is not null and shortReadsVisible is true.
+	 */
+	private void drawShortReads(){
+		if(scaledShortReadsPlot!=null && shortReadsPlotVisible){
+			synchronized (scaledShortReadsPlot) {
+				for(GraphColumn line:scaledShortReadsPlot.values()){
+					stroke(0);
+					line(line.getScaledX(),line.getScaledYStart(),line.getScaledX(),line.getScaledYEnd());
+				}	
+			}
+			
+		}
+	}
 	/**
 	 * Draws a floating label that describes the height at each xCoordinate.
 	 */
 	private void drawLabelForHeight(){
-		if(mouseX<=800){
-			
+		if(mouseX>=graphXStart && mouseX<=graphXEnd){
 			text("Average Height "+ getShortReadDensityHeightAt(mouseX) + " @ "+ 
-					"\n"+tempFunction(mouseX), 350, 650);
-			line(mouseX,600,400,620);
+					"\n"+getAbsoluteCoordinates(mouseX), 350, 650);
+			line(mouseX,shortReadPlotYStart,400,620);
 		}
 	}
+	private void drawIsoformLabels() {
+		if(isoformLabels!=null && isoformLabelsVisible){
+			synchronized (isoformLabels) {
+				for(Label label: isoformLabels){
+					text(label.getText(),label.getXScaled(),label.getYScaled());
+				}	
+			}
+			
+		}
 	
+		
+	}
 	/**
 	 * Draws a grid for the density plot
 	 */
 	private void drawGrid() {
-		line(0,510,800,510);
-		line(800,0,800,510);
+		line(graphXStart,graphYStart+5,graphXEnd,graphYStart+5);
+		line(graphXEnd,graphYStart,graphXEnd,50);
 		int count =0;
-		for(int i =510;i>0; i-=(yScale)){
+		for(int i =graphYStart+5;i>50; i-=(yScale)){
 			if(count%5==0){
-				text(""+count,800,i);
-				line(0,i,800,i);
+				text(""+count,graphXEnd,i);
+				line(graphXStart,i,graphXEnd,i);
 			}
-			
 			count++;	
 		}
-		
 	}
 	
+	private void drawErrorBars(){
+			if(errorBarsVisible && errorBars!=null){
+				synchronized (errorBars) {
+					for(ErrorBars error:errorBars){
+						double SD = error.getStandardDeviation()*yScale;
+						float newScaledYPosition = graphYStart-(yScale*(graphYStart-error.getScaledYPosition()));
+						int start = (int) (newScaledYPosition-SD);
+						int end = (int) (newScaledYPosition+SD);
+						line(error.getScaledXPosition(),start,error.getScaledXPosition(),end);
+	//					strokeWeight(10);
+	//					point(error.getScaledXPosition(),newScaledYPosition);
+	//					strokeWeight(1);
+					}	
+				}
+			}
+		}
 	/**
 	 * Gets the short read density height at the specified xPixel
 	 * 
-	 * @param position is the pixel you want the height of
+	 * @param pixelPosition is the pixel you want the height of
 	 * 
 	 * @return the short read density height at
 	 */
-	private int getShortReadDensityHeightAt(int position){
-		if(scaledDensityPlot!=null){
-			if(position == scaledDensityPlot.get(position).getScaledX()){
-				return scaledDensityPlot.get(position).getHeight();
+	private int getShortReadDensityHeightAt(int pixelPosition){
+		if(scaledShortReadsPlot!=null){
+			if(pixelPosition == scaledShortReadsPlot.get(pixelPosition).getScaledX()){
+				return scaledShortReadsPlot.get(pixelPosition).getUnscaledHeight();
 			}else{
-				return scaledDensityPlot.get(800-position).getHeight();
+				return scaledShortReadsPlot.get((int)reverse(pixelPosition)).getUnscaledHeight();
 			}
 		}else{
-			System.err.println("An attempt was made to fetch the height of coordinate but densityPlot was null");
+			System.err.println("An attempt was made to fetch the height of coordinate but scaledDensityPlot was null");
 			return 0;
 		}
 	}
-	private String tempFunction(int position){
-		if(scaledDensityPlot!=null){
-			if(position == scaledDensityPlot.get(position).getScaledX()){
-				return scaledDensityPlot.get(position).getAbsoluteXStart()+"-"+ scaledDensityPlot.get(position).getAbsoluteXEnd();
+	/**
+	 * @param pixelPosition is the pixel you want to look up. 
+	 * @return the string describes the absolute coordinates that the pixel covers
+	 */
+	private String getAbsoluteCoordinates(int pixelPosition){
+		if(scaledShortReadsPlot!=null){
+			if(pixelPosition == scaledShortReadsPlot.get(pixelPosition).getScaledX()){
+				return scaledShortReadsPlot.get(pixelPosition).getAbsoluteXStart()+"-"+ scaledShortReadsPlot.get(pixelPosition).getAbsoluteXEnd();
 			}else{
-				return scaledDensityPlot.get(800-position).getAbsoluteXStart()+"-"+ scaledDensityPlot.get(800-position).getAbsoluteXEnd();
+				return scaledShortReadsPlot.get((int)reverse(pixelPosition)).getAbsoluteXStart()+"-"+ scaledShortReadsPlot.get((int)reverse(pixelPosition)).getAbsoluteXEnd();
 			}
 		}else{
-			System.err.println("An attempt was made to fetch the height of coordinate but densityPlot was null");
+			System.err.println("An attempt was made to fetch the span of the coordinate but scaledDensityPlot was null");
 			return "Empty";
 		}
-	}
-	private void drawErrorBars(){
-		if(errorBarsVisible && errorBars!=null){
-			for(ErrorBars error:errorBars){
-				double SD = error.getStandardDeviation()*yScale;
-				float newScaledYPosition = graphYStart-(yScale*(graphYStart-error.getScaledYPosition()));
-				int start = (int) (newScaledYPosition-SD);
-				int end = (int) (newScaledYPosition+SD);
-				line(error.getScaledXPosition(),start,error.getScaledXPosition(),end);
-//				strokeWeight(10);
-//				point(error.getScaledXPosition(),newScaledYPosition);
-//				strokeWeight(1);
-			}
-		}
-	}
-	public void setYScale(int iYScale){
-		yScale=iYScale;
 	}
 	private ArrayList<Integer> getArrayOfHeights(int absoluteStart, int absoluteEnd){
 		ArrayList<Integer> arrayOfInts = new ArrayList<Integer>();
@@ -666,7 +668,43 @@ public class ProcessingApplet extends PApplet{
 			arrayOfInts.add(absoluteDensityMap.get(i));
 		}
 		return arrayOfInts;
-		
+	}
+	private Rectangle getRectangleNearestToXCoord(List<Rectangle> listOfRectangles, float iXCoord){
+		//Gets the rectangle closest to the specified xCoord by cycling through;
+		Rectangle closest = null;
+		float howFar =99999;
+		for(Rectangle rect:listOfRectangles){
+			if(rect==null){
+				closest=rect;
+			}
+			if(abs(rect.getScaledXCoord()-iXCoord)<howFar){
+				closest=rect;
+				howFar=abs(rect.getScaledXCoord()-iXCoord);
+			}
+			if(abs(rect.getScaledXCoord()+rect.getScaledLength()-iXCoord)<howFar){
+				closest=rect;
+				howFar=abs(rect.getScaledXCoord()+rect.getScaledLength()-iXCoord);
+			}
+		}
+		return closest;
+	}
+	private Rectangle getRectangleNearestToCoords(List<Rectangle> listOfRectangles,int iXCoord, int iYCoord){
+		Rectangle closest =null;
+		float howFar = 99999;
+		for(Rectangle rect:listOfRectangles){
+			float compare = dist(rect.getScaledXCoord(), rect.getScaledYCoord(), iXCoord, iYCoord);
+			if(rect==null){
+				closest=rect;
+			}else if(compare<howFar){
+				closest=rect;
+				howFar=abs(rect.getScaledXCoord()-iXCoord);
+			}
+		}
+		return closest;
 		
 	}
+	private float reverse(float position){
+		return (graphXEnd-position)+graphXStart;
+	}
+	
 }

@@ -56,7 +56,7 @@ public class Rectangle{
 	}
 
 	public void setAbsoluteStart(int iAbsoluteStart) {
-		absoluteStart = absoluteStart;
+		absoluteStart = iAbsoluteStart;
 	}
 
 	public int getAbsoluteStart() {

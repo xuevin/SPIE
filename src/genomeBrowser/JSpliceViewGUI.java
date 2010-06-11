@@ -105,8 +105,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		slider= new JSlider();
 		
 		//Processing Applet
-		applet = new ProcessingApplet(850, 800);
-		applet.setSize(850, 800);
+		applet = new ProcessingApplet(1000, 800);
 		applet.init();
 		
 		//GeneChooser
@@ -158,9 +157,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		
 		//ScalingSlider
-		scaleSlider = new JSlider(JSlider.HORIZONTAL,2,20,10);
+		scaleSlider = new JSlider(JSlider.HORIZONTAL,1,20,10);
 		scaleSlider.setPaintLabels(true);
-		scaleSlider.setMajorTickSpacing(1);
 		scaleSlider.setEnabled(false);
 		scaleSlider.addChangeListener(this);
 		
@@ -210,7 +208,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		}else if(e.getSource()==weightedIsoformCheckBox){
 			applet.setWeightedIsoformsVisible(weightedIsoformCheckBox.isSelected());
 			applet.setGeneVisible(!weightedIsoformCheckBox.isSelected());
-			applet.setErrorBarsVisible(false);
+			applet.setErrorBarsVisible(weightedIsoformCheckBox.isSelected());
 		}else{
 			
 		}
@@ -224,7 +222,14 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private void isoformChooserAction() {
 		if(filesLoaded()){
 			if(isoformChooser.getItemCount()==0||isoformChooser.getSelectedItem()=="View All"){
-				//Do Nothing
+				if(isoformChooser.getSelectedIndex()==0){
+					applet.setGeneVisible(true);
+					applet.setErrorBarsVisible(false);
+					applet.setWeightedIsoformsVisible(false);
+					applet.clearWeightedIsoforms();
+					weightedIsoformCheckBox.setSelected(false);
+					applet.setReferenceIsoformVisible(false);
+				}
 			}else{
 				Gene gene =  geneRecords.get(geneChooser.getSelectedItem().toString());
 				MRNA mrna = gene.getMRNA().get(isoformChooser.getSelectedItem().toString());
@@ -235,12 +240,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				applet.setGeneVisible(false);
 				applet.setWeightedIsoformsVisible(true);
 				applet.setErrorBarsVisible(true);
+				applet.setReferenceIsoformVisible(true);
 			}	
 		}
-		
-		
-		
-		
 	}
 	
 	/**
@@ -393,5 +395,4 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			}
 		}
 	}
-	
 }

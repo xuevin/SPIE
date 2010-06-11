@@ -1,20 +1,20 @@
 package genomeBrowser;
 
 public class GraphColumn {
-	int xCoord;
-	int yCoord;
+	float xCoord;
+	float yCoord;
 	int height;
 	int absoluteXStart;
 	int absoluteXEnd;
 	
-	public GraphColumn(int iXCoord,int iYCoord, int iHeight, int iAbsoluteXStart, int iAbsoluteXEnd) {
+	public GraphColumn(float iXCoord,float iYCoord, int iHeight, int iAbsoluteXStart, int iAbsoluteXEnd) {
 		xCoord = iXCoord;
 		yCoord = iYCoord;
 		height = iHeight;
 		absoluteXStart = iAbsoluteXStart;
 		absoluteXEnd = iAbsoluteXEnd;
 	}
-	public int getScaledX(){
+	public float getScaledX(){
 		return xCoord;
 	}
 	public int getAbsoluteXStart(){
@@ -25,17 +25,17 @@ public class GraphColumn {
 		return absoluteXEnd;
 		
 	}
-	public void setScaledX(int i) {
-		xCoord=i;
+	public void setScaledX(float iXCoord) {
+		xCoord=iXCoord;
 		
 	}
-	public int getScaledYStart() {
+	public float getScaledYStart() {
 		return yCoord;
 	}
-	public int getScaledYEnd() {
+	public float getScaledYEnd() {
 		return yCoord-height;
 	}
-	public int getHeight(){
+	public int getUnscaledHeight(){
 		return height;
 	}
 	public void incrementHeight(int value){
