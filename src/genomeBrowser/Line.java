@@ -7,7 +7,7 @@ public class Line{
 	private float yCoordEnd;
 	private int color;
 	
-	public Line(int iXCoordStart,int iYCoordStart,int iXCoodEnd,int iYCoordEnd,int iColor){
+	public Line(float iXCoordStart,float iYCoordStart,float iXCoodEnd,float iYCoordEnd,int iColor){
 		xCoordStart = iXCoordStart;
 		xCoordEnd = iXCoodEnd;
 		yCoordStart = iYCoordStart;
@@ -15,10 +15,10 @@ public class Line{
 		color=iColor;
 	}
 
-	public Line(float scaledLastExonEnd,float scaledLastExonY,float midPoint,float iYCoordEnd) {
-		xCoordStart = scaledLastExonEnd;
-		xCoordEnd = midPoint;
-		yCoordStart = scaledLastExonY;
+	public Line(float iXCoordStart,float iYCoordStart,float iXCoodEnd,float iYCoordEnd) {
+		xCoordStart = iXCoordStart;
+		xCoordEnd = iXCoodEnd;
+		yCoordStart = iYCoordStart;
 		yCoordEnd=iYCoordEnd;
 		color=255;
 	}

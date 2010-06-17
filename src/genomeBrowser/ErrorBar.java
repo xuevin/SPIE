@@ -2,14 +2,17 @@ package genomeBrowser;
 
 import java.util.ArrayList;
 
-public class ErrorBars {
+public class ErrorBar {
 	private double standardDeviation;
 	private float scaledXPosition;
 	private float scaledYPosition;
-	public ErrorBars(ArrayList<Integer> arrayOfHeights, float iScaledXPosition, float iScaledYPosition) {
+	private double mean;
+	private String isoformID;
+	public ErrorBar(ArrayList<Integer> arrayOfHeights,String iIsoformID,float iScaledXPosition, float iScaledYPosition) {
 		scaledYPosition=iScaledYPosition;
 		scaledXPosition=iScaledXPosition;
 		standardDeviation=calculateSD(arrayOfHeights);
+		isoformID=iIsoformID;
 	}
 	public float getScaledXPosition(){
 		return scaledXPosition;
@@ -24,7 +27,7 @@ public class ErrorBars {
 		for(Integer value:values){
 			sum+=value;
 		}
-		double mean = (double)sum/values.size();
+		mean = (double)sum/values.size();
 		
 		double variance=0;
 		for(Integer value:values){
@@ -39,6 +42,12 @@ public class ErrorBars {
 	public void setScaledXCoord(float i) {
 		scaledXPosition=i;
 		
+	}
+	public double getAbsoluteHeight() {
+		return mean;
+	}
+	public String getIsoformID(){
+		return isoformID;
 	}
 	
 }
