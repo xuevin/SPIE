@@ -284,8 +284,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		Gene gene =  geneRecords.get(geneChooser.getSelectedItem().toString());
 		if(isoformList.getSize()==0||multiIsoformChooser.getSelectedIndex()==0){
 			if(multiIsoformChooser.getSelectedIndex()==0){
-				applet.loadArrayOfUnweightedIsoforms(gene.getMRNA().values(), 
-						gene.getStart(), gene.getLength(), gene.getStrand());
+				applet.loadArrayOfUnweightedIsoforms(gene.getMRNA().values());
 				applet.setUnweightedIsoformsVisible(true);
 				applet.setWeightedIsoformsVisible(false);
 			}
@@ -299,7 +298,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 						listOfMRNA.add(gene.getMRNA().get(isoformList.get(index).toString()));
 					}
 				}
-				applet.loadArrayOfWeightedIsoforms(listOfMRNA,gene.getStart(),gene.getLength(),gene.getStrand());
+				applet.loadArrayOfWeightedIsoforms(listOfMRNA);
 				applet.setUnweightedIsoformsVisible(false);
 				applet.setWeightedIsoformsVisible(true);
 				
@@ -326,9 +325,10 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private void reloadButonAction(){
 		Gene gene = geneRecords.get(geneChooser.getSelectedItem().toString());
 		multiIsoformChooser.setSelectedIndex(0);
-		applet.loadArrayOfUnweightedIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
+		applet.loadNewArrayOfUnweightedIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
 		applet.setWeightedIsoformsVisible(false);
 		applet.setUnweightedIsoformsVisible(true);
+		isCodingCheckBox.setSelected(true);
 	}
 	private void loadBAMMenuItemAction() {
 		int returnVal = fileChooser.showOpenDialog(JSpliceViewGUI.this);
@@ -395,8 +395,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					for(Gene gene:geneRecords.values()){
 						geneChooser.addItem(gene.getAttributes().get("Name"));
 					}
+					
 					Gene gene = geneRecords.get(geneChooser.getSelectedItem().toString());
-					applet.loadArrayOfUnweightedIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
+					applet.loadNewArrayOfUnweightedIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
 					
 					//Fill in the choices for the Isoforms
 					isoformList.removeAllElements();
@@ -424,7 +425,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			for(MRNA mrna:geneRecords.get(geneChooser.getSelectedItem().toString()).getMRNA().values()){
 				isoformList.addElement(mrna.getId());
 			}
-			applet.loadArrayOfUnweightedIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
+			applet.loadNewArrayOfUnweightedIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
 			if(filesLoaded()){	
 				applet.setUnweightedIsoformsVisible(true);
 				applet.setWeightedIsoformsVisible(false);

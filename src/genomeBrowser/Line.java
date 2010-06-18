@@ -58,7 +58,6 @@ public class Line{
 	public void setColor(int iColor) {
 		color = iColor;
 	}
-
 	public int getColor() {
 		return color;
 	}
