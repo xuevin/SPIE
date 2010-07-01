@@ -2,9 +2,9 @@ package genomeBrowser;
 
 public class Interval {
 	
-	int startCoord;
-	int endCoord;
-	int length;
+	private int startCoord;
+	private int endCoord;
+	private int length;
 	public Interval(int iStartCoord, int iLength){
 		startCoord=iStartCoord;
 		length=iLength;

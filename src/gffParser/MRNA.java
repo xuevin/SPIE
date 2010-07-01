@@ -1,6 +1,5 @@
 package gffParser;
 
-import genomeBrowser.IDHolder;
 
 import java.util.TreeMap;
 
@@ -46,6 +45,12 @@ public class MRNA extends GFF3 implements IDHolder{
 	public TreeMap<Integer,CDS> getCDS(){
 		return treeCDS;
 	}
+	
+	/**
+	 * Gets the TreeMap of Exons (the start position of the exon is the key)
+	 * 
+	 * @return the exons
+	 */
 	public TreeMap<Integer,Exon> getExons(){
 		return treeExon;
 		

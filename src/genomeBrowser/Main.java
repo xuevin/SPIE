@@ -10,7 +10,9 @@ public class Main {
 		//Create a JFrame
 		JFrame frame= new JFrame("Genome Broswer");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.add(new JSpliceViewGUI());
+		JSpliceViewGUI panel = new JSpliceViewGUI();
+		frame.add(panel);
+		frame.setJMenuBar(panel.getJMenuBar());
 		
 		//Start the JFrame
 		frame.pack();
