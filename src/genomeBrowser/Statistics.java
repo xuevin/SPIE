@@ -12,22 +12,47 @@ import net.sf.samtools.CigarElement;
 import net.sf.samtools.CigarOperator;
 import net.sf.samtools.SAMRecord;
 
+/**
+ * The Class Statistics.
+ * 
+ * This class performs a host of statistical analysis.
+ * @author Vincent Xue
+ */
 public class Statistics {
-	static int method;
-	static int totalNumberOfReads;
 	
+	/** The method to use when calculating weights. */
+	private static int method;
+	
+	/** The total number of reads in a BAM file. */
+	private static int totalNumberOfReads;
+
+	/** The overhang used for calculating method 2. (Default is 4)*/
+	private static int overhang = 4;
+	
+	/**
+	 * Sets the method to use for calculating weights.
+	 * 
+	 * @param i the new method
+	 */
 	public static void setMethod(int i){
 		method =i;
 	}
+	
+	/**
+	 * Sets the total number of reads.
+	 * 
+	 * @param i the new total number of reads
+	 */
 	public static void setTotalNumberOfReads(int i){
 		totalNumberOfReads=i;
 	}
-	
 	/**
 	 * Gets the weight of an exon.
+	 * This weight is dependent on what method is used.
 	 * 
 	 * @param compatibleShortReads the ArrayList of compatible ShortReads
 	 * @param exon the exon
+	 * @param endExon the end exon
 	 * 
 	 * @return the weight
 	 */
@@ -46,6 +71,27 @@ public class Statistics {
 		}
 		return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);	
 	}
+	
+	/**
+	 * Gets the ratio of all reads (junction and body) to the total number of possible start
+	 * positions for a short read.
+	 * 
+	 * The total number of positions can be calculated using the equation
+	 * [L-2(v-1)]+[(r-1)-2(v-1)] (for inner exons)
+	 * [L-2(v-1)] (for end exons)
+	 * 
+	 * where
+	 * L is the length of the exon
+	 * r is the length of the short read
+	 * v is the length of the overlap
+	 * 
+	 * @param absoluteStart the absolute start of the exon
+	 * @param absoluteEnd the absolute end of the exon
+	 * @param compatibleShortReads the ArrayList of compatible ShortReads
+	 * @param endExon the boolean that specifies whether the current exon is an end exon
+	 * 
+	 * @return the ratio of all reads : total number of start positions
+	 */
 	private static float getAllReads_Per_TotalPossiblePositions(
 			int absoluteStart, int absoluteEnd,
 			ArrayList<ShortRead> compatibleShortReads,boolean endExon) {
@@ -62,29 +108,19 @@ public class Statistics {
 		//Take the length of the first element of the first cigar of the first compatible sam record
 		int shortReadLength = compatibleShortReads.get(0).getSAMRecord().getCigar().getCigarElement(0).getLength();
 		int length = (absoluteEnd-absoluteStart+1);
-		int overhang = 4;
 		int possibleStartPositions=0;
 		if(endExon)
 		{
-			System.out.println("Short One");
 			possibleStartPositions=length-2*(overhang-1);
 			
 		}else{
-			System.out.println("Long One");
 			possibleStartPositions=length-2*(overhang-1) + ((shortReadLength-1)-2*(overhang-1));
 		}
-		System.out.println(count + " " + possibleStartPositions );
 		return (float)count/possibleStartPositions * 100;
-		
-//			(samRecord.getAlignmentStart()>=absoluteStart && samRecord.getAlignmentEnd()<=absoluteEnd)||
-//			//Tail of short read is in region
-//			(samRecord.getAlignmentStart()<absoluteStart&&samRecord.getAlignmentEnd()>absoluteStart)||
-//			//Head of short read is in region
-//			(samRecord.getAlignmentStart()<absoluteEnd && samRecord.getAlignmentEnd()>absoluteEnd)){
-		// TODO Auto-generated method stub
 	}
+	
 	/**
-	 * Gets the (Sum of reads Per Base) divided by total number of bases.
+	 * Gets the ratio of the sum of reads per base to the total number of bases.
 	 * 
 	 * @param absoluteStart the absolute start of the exon
 	 * @param absoluteEnd the absolute end of the exon
@@ -93,7 +129,6 @@ public class Statistics {
 	 * @return the sum of reads per base divided by total number of bases
 	 */
 	public static float getAverage_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
-		//TODO THIS IS NOT EFFICIENT
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
 		int sum =0;
@@ -105,13 +140,13 @@ public class Statistics {
 	}
 	
 	/**
-	 * Gets the number of body short reads divided by the exon length
+	 * Gets the number of body short reads divided by the exon length.
 	 * 
 	 * @param absoluteStart the absolute start of an exon
 	 * @param absoluteEnd the absolute end of an exon
 	 * @param compatibleShortReads the compatible short reads
 	 * 
-	 * @return the number of reads for the exon divided by the length of the exon 
+	 * @return the number of reads for the exon divided by the length of the exon
 	 */
 	public static float getBodyReads_Per_ExonLength(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		int length = (absoluteEnd-absoluteStart+1);
@@ -120,15 +155,37 @@ public class Statistics {
 			if(		shortRead.getStart()>=absoluteStart &&
 					shortRead.getEnd()<=absoluteEnd &&
 					shortRead.isBodyRead()){
+				count++;
 			}
-			count++;
+			
 		}
 		return (float)count/(length);
 	}
+	
+	/**
+	 * Gets the number of body short reads divided by the exon length divided by the total number of reads in the BAM file
+	 * The total number of reads in a bam file must be set using the setTotalNumberOfReads() function.
+	 * 
+	 * @param absoluteStart the absolute start of the exon
+	 * @param absoluteEnd the absolute end of the exon
+	 * @param compatibleShortReads the compatible short reads
+	 * 
+	 * @return the number of body short reads divided by the exon length divided by the total number of reads
+	 */
 	public static float getAverage_ReadsPerExonLength_OverTotalNumberOfReads(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		return (getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads)/totalNumberOfReads);
 		 
 	}
+	
+	/**
+	 * Gets the standard deviation_ reads per base.
+	 * 
+	 * @param absoluteStart the absolute start
+	 * @param absoluteEnd the absolute end
+	 * @param compatibleShortReads the compatible short reads
+	 * 
+	 * @return the standard deviation_ reads per base
+	 */
 	public static float getStandardDeviation_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads) {
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
@@ -140,13 +197,14 @@ public class Statistics {
 		}
 		return (float) Math.sqrt(variance/(absoluteEnd-absoluteStart));//Don't need the minus one because this is inclusive
 	}
+	
 	/**
-	 * Gets a ArrayList of compatible ShortReads
+	 * Gets a ArrayList of compatible ShortReads.
 	 * 
 	 * @param isoform the isoform you want to find compatible reads for
-	 * @param iSAMRecords the arrayList of SAMRecords you want to check (NonCompatible)
+	 * @param iSAMRecords the arrayList of SAMRecords you want to check (Non-Compatible)
 	 * 
-	 * @return An ArrayList of compatible ShortReads are returned.
+	 * @return An ArrayList of compatible ShortReads
 	 */
 	public static ArrayList<ShortRead> getCompatibleShortReads(MRNA isoform, ArrayList<SAMRecord> iSAMRecords){ 
 		ArrayList<ShortRead> arrayOfCompatibleShortReads = new ArrayList<ShortRead>();
@@ -184,7 +242,7 @@ public class Statistics {
 	
 	/**
 	 * Gets a compatible ArrayList of SAMRecords
-	 * (it calls getCompatibleShortReadsFirst)
+	 * (it calls getCompatibleShortReadsFirst).
 	 * 
 	 * @param isoform the input isoform
 	 * @param iSamRecords the input array of SAMRecords (NonCompatible ShortReads)
@@ -217,19 +275,21 @@ public class Statistics {
 	/**
 	 * Gets a new ShortRead if the SAMRecord is compatible
 	 * 
+	 * 1) First find the exon where the short read begins
+	 * 2) Catch the case of a single interval --See if the short read is completely within the exon
+	 * 3) If more than one interval, check each interval with the next ones. Make sure short read
+	 * interval has 'start of exon'  and end of short read has 'end of exon' (except the last)
+	 * 4) Check that the last interval matches
+	 * 
 	 * @param samRecord the SAMRecord that you want to find out is compatible or not
-	 * @param samInterval the ArrayList of Intervals that contain the genomic coordinates 
-	 * 		for which a short read spans
+	 * @param samInterval the ArrayList of Intervals that contain the genomic coordinates
+	 * for which a short read spans
 	 * @param exonList the Collection of exons that the SAMRecord might be found in or cross
 	 * 
 	 * @return a new ShortRead is returned if it is compatible. If it is not, null is returned.
 	 */
 	private static ShortRead getShortReadIfCompatible(SAMRecord samRecord,ArrayList<Interval> samInterval,Collection<Exon> exonList){
-		//1)First find the exon where the short read begins
-		//2)Catch the case of a single interval --See if the short read is completely within the exon
-		//3)If more than one interval, check each interval with the next ones. Make sure short read 
-		//	interval has 'start of exon'  and end of short read has 'end of exon' (except the last) 
-		//4) Check that the last interval matches
+		
 		if(samInterval.size()==0){
 			System.err.println("samInterval Was Empty");
 			return null;
@@ -315,7 +375,7 @@ public class Statistics {
 	 * @param isoform the isoform for which you want to get a density map of
 	 * @param iSamRecords the ArrayList of SAMRecords from which a density map will be generated from
 	 * 
-	 * @return The HashMap of <Integer,Integer> where the key is the genomic coordinate and the value 
+	 * @return The HashMap of <Integer,Integer> where the key is the genomic coordinate and the value
 	 * is the number of short reads that cross it. This hash map is generate only using compatible reads
 	 */
 	public static HashMap<Integer,Integer> getIsoformDensityMap(int absoluteStart, int absoluteEnd,MRNA isoform, ArrayList<SAMRecord> iSamRecords){
@@ -332,7 +392,7 @@ public class Statistics {
 	 * @param absoluteEnd the end of the gene
 	 * @param iSAMRecords the ArrayList of SAMRecords from which a density map will be generated from
 	 * 
-	 * @return The HashMap of <Integer,Integer> where the key is the genomic coordinate and the value 
+	 * @return The HashMap of <Integer,Integer> where the key is the genomic coordinate and the value
 	 * is the number of short reads that cross it
 	 */
 	public static HashMap<Integer, Integer> getDensityMap(int absoluteStart, int absoluteEnd,ArrayList<SAMRecord> iSAMRecords){
@@ -387,6 +447,17 @@ public class Statistics {
 		}
 		return densityMap;
 	}
+	
+	/**
+	 * Gets the number of body reads as specified by the coordinates.
+	 * 
+	 * @param isoform the isoform from which you want the compatible reads
+	 * @param absoluteStart the absolute start of the exon
+	 * @param absoluteEnd the absolute end of the exon
+	 * @param iSAMRecords the Array of SAMRecords (Non-Compatible)
+	 * 
+	 * @return the number of body reads in the specified region
+	 */
 	public static int getNumberOfBodyReads(MRNA isoform,int absoluteStart, int absoluteEnd,
 			ArrayList<SAMRecord> iSAMRecords){
 		ArrayList<ShortRead> compatibleShortReads= getCompatibleShortReads(isoform, iSAMRecords);
@@ -405,12 +476,22 @@ public class Statistics {
 		}
 		return count;
 	}
+	
+	/**
+	 * Gets the number of junction reads as specified by the coordinates.
+	 * 
+	 * @param isoform the isoform from which you want the compatible reads
+	 * @param absoluteStart the absolute start of the exon
+	 * @param absoluteEnd the absolute end of the exon
+	 * @param iSAMRecords the Array of SAMRecords (Non-Compatible)
+	 * 
+	 * @return the number of junction reads in the specified region
+	 */
 	public static int getNumberOfJunctionReads(MRNA isoform,int absoluteStart, int absoluteEnd,
 			ArrayList<SAMRecord> iSAMRecords){
 		ArrayList<ShortRead> compatibleShortReads= getCompatibleShortReads(isoform, iSAMRecords);
 		int count=0;
 		for(ShortRead shortRead:compatibleShortReads){
-			//Head
 			if(shortRead.isJunctionRead()){
 				for(Exon exon :shortRead.getSetOfExons()){
 					if(exon.getStart()==absoluteStart && exon.getEnd()==absoluteEnd){
@@ -421,6 +502,16 @@ public class Statistics {
 			}
 		}
 		return count;
+		
+	}
+
+	/**
+	 * Sets the overhang.
+	 * 
+	 * @param iOverhang the new overhang
+	 */
+	public static void setOverhang(int iOverhang) {
+		overhang = iOverhang;
 		
 	}
 

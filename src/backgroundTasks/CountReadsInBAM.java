@@ -1,6 +1,5 @@
 package backgroundTasks;
 
-import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 
@@ -23,10 +22,13 @@ public class CountReadsInBAM implements Runnable{
 		
 		while(!Thread.interrupted() &&itr.hasNext()){
 			count++;
-			labelToUpdate.setText("Reads:"+count);
+			if(count%100000==0){
+				labelToUpdate.setText("Reads:"+count);	
+			}
 			itr.next();
 		}
 		itr.close();
+		labelToUpdate.setText("Reads:"+count);
 		comboBoxToSetActivated.setEnabled(true);
 		
 	}

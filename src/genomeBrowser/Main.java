@@ -12,7 +12,6 @@ public class Main {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		JSpliceViewGUI panel = new JSpliceViewGUI();
 		frame.add(panel);
-		frame.setJMenuBar(panel.getJMenuBar());
 		
 		//Start the JFrame
 		frame.pack();

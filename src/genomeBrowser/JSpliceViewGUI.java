@@ -39,6 +39,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerListModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.event.ListSelectionEvent;
@@ -52,9 +53,6 @@ import net.sf.samtools.util.CloseableIterator;
 
 public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListener,
 											MouseWheelListener,ListSelectionListener{
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	private JMenuBar menuBar;
 	private JMenu file,help;
@@ -243,12 +241,15 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		//TODO fix checkbox
 		
 		//Overhang Spinner
-		overhangSpinner = new JSpinner();
+		overhangSpinner = new JSpinner(new SpinnerListModel(
+				new String[]{"0","1","2","3","4","5","6","7","8","9","10"}));
+		overhangSpinner.add(new JLabel("Exon Overhang"));
+		overhangSpinner.getModel().setValue("4");
 		overhangSpinner.setAlignmentX(LEFT_ALIGNMENT);
 		overhangSpinner.addChangeListener(this);
 		overhangSpinner.setMaximumSize(new Dimension(60,30));
 		overhangSpinner.setEnabled(false);
-		//TODO fix changelistener
+		
 		
 		
 		
@@ -285,7 +286,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		graphBox.add(new JLabel("Scale"));
 		graphBox.add(Box.createRigidArea(new Dimension(0,5)));
 		graphBox.add(scaleSlider);
-		graphBox.add(new JLabel("Exon Overhang"));
 		graphBox.add(overhangSpinner);
 		graphBox.add(compatibleShortReadsCheckBox);
 		
@@ -325,11 +325,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		}else if(e.getSource()==reloadButton){
 			reloadButonAction();
 		}else if(e.getSource()==normalizeComboBox){
-			applet.normalize(Integer.parseInt(readsCounter.getText().substring(6)),normalizeComboBox.getSelectedIndex());
+			int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
+			applet.normalize(Integer.parseInt(readsCounter.getText().substring(6)),normalizeComboBox.getSelectedIndex(),overhang);
 			Gene gene = getCurrentlySelectedGene();
 			SAMFileReader samRecords = getCurrentlySelectedReader(); 
 			
-			if(multiIsoformChooser.getSelectedIndex()>0){
+			if(samRecords!=null&&multiIsoformChooser.getSelectedIndex()>0){
 				applet.animatedLoadShortReads(getShortReadMatch(gene, samRecords),
 						gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
 			}
@@ -376,6 +377,18 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	public void stateChanged(ChangeEvent e){
 		if(e.getSource()==scaleSlider){
 			applet.setYScale(scaleSlider.getValue());
+		}else if (e.getSource()==overhangSpinner){
+			if(getCurrentlySelectedMethod()==2){
+				int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
+				applet.normalize(Integer.parseInt(readsCounter.getText().substring(6)),normalizeComboBox.getSelectedIndex(),overhang);
+				Gene gene = getCurrentlySelectedGene();
+				SAMFileReader samRecords = getCurrentlySelectedReader(); 
+				
+				if(samRecords!=null&&multiIsoformChooser.getSelectedIndex()>0){
+					applet.animatedLoadShortReads(getShortReadMatch(gene, samRecords),
+							gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
+				}	
+			}
 		}
 	}
 	private void multipleIsoformChooserAction() {
@@ -465,7 +478,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					
 					actionWhenBothFilesAreLoaded();
 					
-					//TODO May lead to memory leak....
 					SAMFileReader samRecordsCount = new SAMFileReader(inputBamFile,inputBamIndex);
 					samRecordsCount.setValidationStringency(SAMFileReader.ValidationStringency.SILENT);
 					new Thread(new CountReadsInBAM(samRecordsCount,normalizeComboBox,readsCounter)).start();
@@ -595,6 +607,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			applet.setShortReadsVisible(true);
 			shortReadCheckBox.setSelected(true);
 			scaleSlider.setEnabled(true);
+			overhangSpinner.setEnabled(true);
 				
 		}
 	}
@@ -606,7 +619,17 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		 //System.out.println(notches);
 		
 	}
+	
+	/**
+	 * Gets the currently selected SAMFileReader.
+	 * 
+	 * @return the currently selected reader (users refer to this as a sample)
+	 */
 	private SAMFileReader getCurrentlySelectedReader(){
+		if(shortReadChooser.getSelectedIndex()<0){
+			System.err.println("There was an error when trying to get the currently selected short read");
+			return null;
+		}
 		if(listOfSamRecords.get(shortReadChooser.getSelectedIndex())!=null){
 			return listOfSamRecords.get(shortReadChooser.getSelectedIndex());	
 		}else{
@@ -614,14 +637,39 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			return null;
 		}
 	}
+	
+	/**
+	 * Gets the currently selected gene.
+	 * 
+	 * @return the currently selected gene
+	 */
 	private Gene getCurrentlySelectedGene(){
-		if(geneRecords.get(geneChooser.getSelectedItem().toString())!=null){
-			return geneRecords.get(geneChooser.getSelectedItem().toString());
+		if(geneChooser.getSelectedIndex()>=0){
+			if(geneRecords.get(geneChooser.getSelectedItem().toString())!=null){
+				return geneRecords.get(geneChooser.getSelectedItem().toString());
+			}else{
+				System.err.println("There was an error when trying to get the currently selected Gene");
+				return null;
+			}	
 		}else{
 			System.err.println("There was an error when trying to get the currently selected Gene");
 			return null;
 		}
+		
 	}
+	/**
+	 * Gets the currently selected method for normalization
+	 * 
+	 * @return the currently selected method
+	 */
+	private int getCurrentlySelectedMethod(){
+		return normalizeComboBox.getSelectedIndex();
+	}
+	/**
+	 * Gets an ArrayList of the currently selected MRNA.
+	 * 
+	 * @return the currently selected MRNAs in multiIsoformChooser
+	 */
 	private ArrayList<MRNA> getCurrentlySelectedMRNAs(){
 		Gene gene = getCurrentlySelectedGene();
 		ArrayList<MRNA> listOfMRNA = new ArrayList<MRNA>();
@@ -633,8 +681,5 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			}
 		}
 		return listOfMRNA;
-	}
-	public JMenuBar getJMenuBar(){
-		return menuBar;
 	}
 }

@@ -6,7 +6,6 @@ import genomeBrowser.Statistics;
 import gffParser.MRNA;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import drawableObjects.Rectangle_Weighted;
@@ -20,12 +19,11 @@ public class UpdateAnimation implements Runnable{
 	private MRNA isoform;
 	
 	public UpdateAnimation(ProcessingApplet iParent,MRNA iIsoform,ArrayList<ShortRead> iCompatibleShortReads,
-			List<Rectangle_Weighted> iWeightedIsoforms) {
+			List<Rectangle_Weighted> weightedIsoforms2) {
 		compatibleShortReads=iCompatibleShortReads;
-		weightedIsoforms=iWeightedIsoforms;
+		weightedIsoforms=weightedIsoforms2;
 		parent = iParent;
-		isoform = iIsoform;
-		
+		isoform = iIsoform;		
 	}
 	public void run() {
 		int itr = 30;

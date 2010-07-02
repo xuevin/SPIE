@@ -1,14 +1,8 @@
 package drawableObjects;
 
-
-import genomeBrowser.Statistics;
-
-import java.util.ArrayList;
-
 public class ErrorBar {
 	private double standardDeviation;
 	private float scaledXPosition;
-	private double mean;
 	private String isoformID;
 	private float weight;
 	private Rectangle_Weighted rectangle;
@@ -17,7 +11,7 @@ public class ErrorBar {
 	 * Instantiates a new ErrorBar.
 	 * 
 	 * @param iIsoformID the ID of the MRNA that this error bar is a part of
-	 * @param iScaledXPosition the scaled X position of the Error Bar
+	 * @param iScaledXPosition the scaled X position of the Error Bar (should be the middle of an exon)
 	 * @param iRectangle the Rectangle that the error bar covers
 	 * @param iWeight the weight of the error bar
 	 * @param iStandardDeviation the standard deviation of the error bar

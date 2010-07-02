@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.TreeSet;
 
 import drawableObjects.ConstitutiveLine_Unweighted;
 import drawableObjects.ConstitutiveLine_Weighted;
@@ -39,13 +38,11 @@ public class ProcessingApplet extends PApplet{
 	private int width;
 	private int height;
 	private boolean shortReadsPlotVisible,unweightedIsoformsVisible, isCodingStrand
-					,splicingLinesVisible,weightedIsoformsVisible;
-	private TreeSet<Integer> allScaledEndCoords;
+					,splicingLinesVisible,weightedIsoformsVisible,gridLinesVisible;
 	private List<Line> spliceLines;
 	private List<ConstitutiveLine_Weighted> weightedConsitutiveLines;
 	private List<ConstitutiveLine_Unweighted> unweightedConsitutiveLines;
 	private List<Junction> junctionList;
-	private List<GraphColumn> isformSpecificDensityPlot;
 	private List<Rectangle> uneweightedIsoforms,referenceIsoforms;
 	private List<Rectangle_Weighted> weightedIsoforms;
 	private List<MRNA> currentlyViewingIsoforms;
@@ -81,6 +78,7 @@ public class ProcessingApplet extends PApplet{
 		shortReadsPlotVisible=false;
 		splicingLinesVisible=false;
 		weightedIsoformsVisible=false;
+		gridLinesVisible=true;
 		
 		currentlyViewingIsoforms= Collections.synchronizedList(new ArrayList<MRNA>());
 		scaledShortReadsPlot = new HashMap<Integer, GraphColumn>();
@@ -98,7 +96,6 @@ public class ProcessingApplet extends PApplet{
 		
 		geneSAMRecords=null;
 		
-		isformSpecificDensityPlot=null;
 		graphYStart = 500;
 		graphYEnd = 80;
 		graphXStart = 200;
@@ -582,7 +579,38 @@ public class ProcessingApplet extends PApplet{
 						}
 					}
 				}
-				//FIXME Start and Stop codons are not drawn! This may pose an issue in the future
+				//StartCodon && StopCodon
+				float scLengthScaled=map(mrna.getStartCodon().getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+				float ecLengthScaled=map(mrna.getStopCodon().getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+				float scStartScaled;
+				float ecStartScaled;
+				if(isCodingStrand){
+					scStartScaled = scaleAbsoluteCoord(mrna.getStartCodon().getStart());
+					ecStartScaled = scaleAbsoluteCoord(mrna.getStopCodon().getStart());
+				}else{
+					scStartScaled = scaleAbsoluteCoord(mrna.getStartCodon().getEnd());
+					ecStartScaled = scaleAbsoluteCoord(mrna.getStopCodon().getEnd());
+				}
+				
+				//START Codon
+				Rectangle_Weighted exon_Rect=getRectangleNearestToXCoord(weightedIsoforms,mrna.getId(),scStartScaled);
+				float weight = exon_Rect.getWeight();
+				Rectangle_Weighted temp = new Rectangle_Weighted(scStartScaled,scLengthScaled,20,
+						mrna.getStartCodon().getStart(),mrna.getStartCodon().getEnd(),mrna.getId(),weight,cdsColor);
+				weightedIsoforms.add(temp);
+				Rectangle temp2 = new Rectangle(scStartScaled, yRefStart-5, scLengthScaled,20,
+						mrna.getStartCodon().getStart(),mrna.getStartCodon().getEnd(),mrna.getId(),cdsColor);
+				referenceIsoforms.add(temp2);
+				//END Codon
+				exon_Rect=getRectangleNearestToXCoord(weightedIsoforms,mrna.getId(),ecStartScaled);
+				weight = exon_Rect.getWeight();
+				temp = new Rectangle_Weighted(ecStartScaled,ecLengthScaled,20,
+						mrna.getStopCodon().getStart(),mrna.getStopCodon().getEnd(),mrna.getId(),weight,cdsColor);
+				weightedIsoforms.add(temp);
+				temp2 = new Rectangle(ecStartScaled, yRefStart-5, ecLengthScaled,20,
+						mrna.getStopCodon().getStart(),mrna.getStopCodon().getEnd(),mrna.getId(),cdsColor);
+				referenceIsoforms.add(temp2);
+				
 				yRefStart+=20;
 			}
 		}else{
@@ -647,10 +675,6 @@ public class ProcessingApplet extends PApplet{
 	//This is how you will do zooming
 	private void drawWindow(int startCoord, int endCoord){
 		
-	}
-	private void fillInIsoformSpecificDensityPlot(ArrayList<SAMRecord> iShortReads,MRNA iMRNA) {
-		isformSpecificDensityPlot= Collections.synchronizedList(new ArrayList<GraphColumn>());
-			
 	}
 	private synchronized void fillScaledShortReadsPlot(){
 		scaledShortReadsPlot.clear();
@@ -882,19 +906,20 @@ public class ProcessingApplet extends PApplet{
 	 * Draws a grid for the weighted Isoforms
 	 */
 	private void drawGrid() {
-		
-		line(graphXStart,graphYStart,graphXEnd,graphYStart);
-		line(graphXStart,graphYStart,graphXStart,50);
-		int count =0;
-		stroke(150);
-		for(int i =graphYStart;i>graphYEnd; i-=(yScale)){
-			if(count%5==0){
-				text(""+count,graphXStart-20,i+5);
-				line(graphXStart,i,graphXEnd,i);
+		if(gridLinesVisible){
+			line(graphXStart,graphYStart,graphXEnd,graphYStart);
+			line(graphXStart,graphYStart,graphXStart,50);
+			int count =0;
+			stroke(150);
+			for(int i =graphYStart;i>graphYEnd; i-=(yScale)){
+				if(count%5==0){
+					text(""+count,graphXStart-20,i+5);
+					line(graphXStart,i,graphXEnd,i);
+				}
+				count++;	
 			}
-			count++;	
+			stroke(0);	
 		}
-		stroke(0);
 	}
 	
 	private void drawErrorBars(){
@@ -1211,16 +1236,14 @@ public class ProcessingApplet extends PApplet{
 		
 	}
 
-	public void normalize(int totalNumberOfReads,int method) {
-		
-//		for(GraphColumn column: scaledShortReadsPlot){
-//			column.
-//		}
-		// TODO Auto-generated method stub
+	public void normalize(int totalNumberOfReads,int method,int overhang) {
+		if(method==2){
+			gridLinesVisible=false;
+		}else{
+			gridLinesVisible=true;
+		}
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
+		Statistics.setOverhang(overhang);
 		Statistics.setMethod(method);
-		System.out.println("Method: " + method);
-		
-		
 	}
 }
