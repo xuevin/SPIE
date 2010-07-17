@@ -79,9 +79,7 @@ public class Statistics {
 			//Average Coverage Per Exon	
 			case METHOD0: return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);
 			case METHOD1: return getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads);
-			//Rob's Method
-			case METHOD2: return getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon);
-			case METHOD3: return getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads*1000000;
+			case METHOD2: return (getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads)*100000000;
 			default: return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads); 
 		}
 					 
@@ -174,6 +172,17 @@ public class Statistics {
 		}
 		return (float)count/(length);
 	}
+	public static float getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+		switch(method){
+			case METHOD0:return getStandardDeviation_ReadsPerBase(absoluteStart, absoluteEnd,compatibleShortReads);
+			case METHOD1:return 0;
+			case METHOD2:return 0;
+			case METHOD3:return 0;
+			default:return 0;
+		}
+		
+	}
+	
 	/**
 	 * Gets the standard deviation_ reads per base.
 	 * 
@@ -516,8 +525,7 @@ public class Statistics {
 		switch(method){
 			case METHOD0: return junction.getHits();
 			case METHOD1: return 0;
-			case METHOD2: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1));
-			case METHOD3: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*1000000; 
+			case METHOD2: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
 			default: return 10;
 			//FIXME
 		}	

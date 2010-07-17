@@ -622,10 +622,8 @@ public class ProcessingApplet extends PApplet{
 			Statistics.setMethod(Statistics.Method.METHOD1);
 		}else if(method==2){
 			Statistics.setMethod(Statistics.Method.METHOD2);
-		}else if(method==3){
-			Statistics.setMethod(Statistics.Method.METHOD3);
 		}else{
-			
+			Statistics.setMethod(Statistics.Method.METHOD0);
 		}
 	}
 	public float getRPKM(ArrayList<SAMRecord> samRecords,int totalNumberOfReads) {
@@ -1039,7 +1037,7 @@ public class ProcessingApplet extends PApplet{
 								exon.getStart(),exon.getEnd(),mrna.getId(),average,exonColor);
 						weightedIsoforms.add(temp);
 						errorBars.add(new ErrorBar(average,
-								Statistics.getStandardDeviation_ReadsPerBase(exon.getStart(),exon.getEnd(),compatibleShortReads),
+								Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleShortReads),
 								temp,mrna.getId(),(startScaled+lengthScaled/2)));
 						
 						//Fill in array that draws the reference isoforms

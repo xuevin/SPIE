@@ -227,7 +227,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		
 		//scalingSlider
-		scaleSlider = new JSlider(JSlider.HORIZONTAL,1,20,5);
+		scaleSlider = new JSlider(JSlider.HORIZONTAL,1,40,5);
 		scaleSlider.setAlignmentX(LEFT_ALIGNMENT);
 		scaleSlider.setPaintLabels(true);
 		scaleSlider.setEnabled(false);
@@ -265,9 +265,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		methodComboBox.setPreferredSize((new Dimension(200,50)));
 		methodComboBox.setMaximumSize(new Dimension(200,50));
 		methodComboBox.addItem("Coverage Per Exon");
-		methodComboBox.addItem("Sum of Short Reads / Length of Exon - (Length of Short Read-1)");
-		methodComboBox.addItem("Rob's Method");
-		methodComboBox.addItem("Normalized");
+		methodComboBox.addItem("SR / Exon");
+		methodComboBox.addItem("RPKM");
 		methodComboBox.setAlignmentX(LEFT_ALIGNMENT);
 		methodComboBox.addActionListener(this);
 		
