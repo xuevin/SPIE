@@ -1,10 +1,10 @@
 #Fat Jar Configuration File
-#Fri Jun 11 15:54:38 EDT 2010
+#Sat Jul 17 04:15:53 EDT 2010
 onejar.license.required=true
 manifest.classpath=
 manifest.removesigners=true
 onejar.checkbox=false
-jarname=MSRP_Project_fat.jar
+jarname=Vito.jar
 manifest.mergeall=true
 manifest.mainclass=genomeBrowser.Main
 manifest.file=<createnew>
