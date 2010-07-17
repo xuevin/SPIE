@@ -18,11 +18,11 @@ public class UpdateAnimation implements Runnable{
 	private ProcessingApplet parent;
 	private MRNA isoform;
 	
-	public UpdateAnimation(ProcessingApplet iParent,MRNA iIsoform,ArrayList<ShortRead> iCompatibleShortReads,
+	public UpdateAnimation(ProcessingApplet processingApplet,MRNA iIsoform,ArrayList<ShortRead> iCompatibleShortReads,
 			List<Rectangle_Weighted> weightedIsoforms2) {
 		compatibleShortReads=iCompatibleShortReads;
 		weightedIsoforms=weightedIsoforms2;
-		parent = iParent;
+		parent = processingApplet;
 		isoform = iIsoform;		
 	}
 	public void run() {
@@ -33,7 +33,7 @@ public class UpdateAnimation implements Runnable{
 			} catch (InterruptedException e) {
 				ArrayList<MRNA> listOfMRNA = new ArrayList<MRNA>();
 				listOfMRNA.add(isoform);
-				parent.loadArrayOfWeightedIsoforms(listOfMRNA);
+				parent.loadArrayOfIsoforms(listOfMRNA);
 			}
 			synchronized (weightedIsoforms) {
 				
@@ -43,7 +43,7 @@ public class UpdateAnimation implements Runnable{
 					if(j==0 | j== weightedIsoforms.size()-1){
 						endExon=true;
 					}
-					float newWeight =Statistics.getWeight(isoform.getExons().get(rect.getAbsoluteStart()),
+					float newWeight =Statistics.getWeightOfExon(isoform.getExons().get(rect.getAbsoluteStart()),
 							compatibleShortReads,endExon);
 					float intermediate = PApplet.map(i,0,itr,rect.getWeight(),newWeight);
 					rect.setWeight(intermediate);
@@ -53,6 +53,6 @@ public class UpdateAnimation implements Runnable{
 		}
 		ArrayList<MRNA> listOfMRNA = new ArrayList<MRNA>();
 		listOfMRNA.add(isoform);
-		parent.loadArrayOfWeightedIsoforms(listOfMRNA);
+		parent.loadArrayOfIsoforms(listOfMRNA);
 	}
 }

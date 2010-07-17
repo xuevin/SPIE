@@ -8,6 +8,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import drawableObjects.Junction;
+
 import net.sf.samtools.CigarElement;
 import net.sf.samtools.CigarOperator;
 import net.sf.samtools.SAMRecord;
@@ -19,25 +21,30 @@ import net.sf.samtools.SAMRecord;
  * @author Vincent Xue
  */
 public class Statistics {
-	
-	/** The method to use when calculating weights. */
-	private static int method;
+	public enum Method{
+		METHOD0,METHOD1,METHOD2,METHOD3
+	}
 	
 	/** The total number of reads in a BAM file. */
 	private static int totalNumberOfReads;
 
 	/** The overhang used for calculating method 2. (Default is 4)*/
 	private static int overhang = 4;
+
+	/** The method to use when calculating weights. */
+	private static Method method= Method.METHOD0;
+	
+	/** The short read length.(Default is 35) */ 
+	private static int shortReadLength = 35;
 	
 	/**
 	 * Sets the method to use for calculating weights.
 	 * 
 	 * @param i the new method
 	 */
-	public static void setMethod(int i){
+	public static void setMethod(Method i){
 		method =i;
 	}
-	
 	/**
 	 * Sets the total number of reads.
 	 * 
@@ -45,6 +52,15 @@ public class Statistics {
 	 */
 	public static void setTotalNumberOfReads(int i){
 		totalNumberOfReads=i;
+	}
+	
+	/**
+	 * Sets the short read length.
+	 *
+	 * @param i the new short read length
+	 */
+	public static void setShortReadLength(int i){
+		shortReadLength = i;
 	}
 	/**
 	 * Gets the weight of an exon.
@@ -56,20 +72,20 @@ public class Statistics {
 	 * 
 	 * @return the weight
 	 */
-	public static float getWeight(Exon exon, ArrayList<ShortRead> compatibleShortReads,Boolean endExon){
+	public static float getWeightOfExon(Exon exon, ArrayList<ShortRead> compatibleShortReads,Boolean endExon){
 		int absoluteStart = exon.getStart();
 		int absoluteEnd = exon.getEnd();
-		if(method==0){
-			return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);	
-		}else if (method==1){
-			return getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads);
-		}else if(method==2){
-			return getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon); 
-		}else if(method==3){
-			float value = getAverage_ReadsPerExonLength_OverTotalNumberOfReads(absoluteStart, absoluteEnd, compatibleShortReads);
-			return value*10000000;	
+		switch(method){
+			//Average Coverage Per Exon	
+			case METHOD0: return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);
+			case METHOD1: return getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads);
+			//Rob's Method
+			case METHOD2: return getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon);
+			case METHOD3: return getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads*1000000;
+			default: return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads); 
 		}
-		return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);	
+					 
+			
 	}
 	
 	/**
@@ -104,9 +120,6 @@ public class Statistics {
 				}
 			}
 		}
-		
-		//Take the length of the first element of the first cigar of the first compatible sam record
-		int shortReadLength = compatibleShortReads.get(0).getSAMRecord().getCigar().getCigarElement(0).getLength();
 		int length = (absoluteEnd-absoluteStart+1);
 		int possibleStartPositions=0;
 		if(endExon)
@@ -116,7 +129,7 @@ public class Statistics {
 		}else{
 			possibleStartPositions=length-2*(overhang-1) + ((shortReadLength-1)-2*(overhang-1));
 		}
-		return (float)count/possibleStartPositions * 100;
+		return (float)count/possibleStartPositions;
 	}
 	
 	/**
@@ -161,22 +174,6 @@ public class Statistics {
 		}
 		return (float)count/(length);
 	}
-	
-	/**
-	 * Gets the number of body short reads divided by the exon length divided by the total number of reads in the BAM file
-	 * The total number of reads in a bam file must be set using the setTotalNumberOfReads() function.
-	 * 
-	 * @param absoluteStart the absolute start of the exon
-	 * @param absoluteEnd the absolute end of the exon
-	 * @param compatibleShortReads the compatible short reads
-	 * 
-	 * @return the number of body short reads divided by the exon length divided by the total number of reads
-	 */
-	public static float getAverage_ReadsPerExonLength_OverTotalNumberOfReads(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
-		return (getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads)/totalNumberOfReads);
-		 
-	}
-	
 	/**
 	 * Gets the standard deviation_ reads per base.
 	 * 
@@ -513,6 +510,46 @@ public class Statistics {
 	public static void setOverhang(int iOverhang) {
 		overhang = iOverhang;
 		
+	}
+
+	public static float getWeightOfJunction(Junction junction) {
+		switch(method){
+			case METHOD0: return junction.getHits();
+			case METHOD1: return 0;
+			case METHOD2: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1));
+			case METHOD3: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*1000000; 
+			default: return 10;
+			//FIXME
+		}	
+	}
+	public static float getRPKM(ArrayList<SAMRecord> allSAMRecord, ArrayList<Interval> constitutiveIntervals,int totalNumberOfReads){
+		Statistics.setTotalNumberOfReads(totalNumberOfReads);
+		ArrayList<Interval> listOfIntervals = new ArrayList<Interval>();
+		
+		for(Interval interval:constitutiveIntervals){
+			if(interval.getLength()>shortReadLength){
+				listOfIntervals.add(interval);
+			}
+		}
+		//System.out.println(listOfIntervals.size());
+		float count=0;
+		float denominator=0;
+		for(Interval interval:listOfIntervals){
+			denominator+=(interval.getLength()-shortReadLength+1);
+			for(SAMRecord samRecord:allSAMRecord){
+				//Ignore all junction reads (body reads are the ones with cigar lengths of 35
+				if(samRecord.getCigar().getCigarElements().size()==1){
+					if(	interval.getStartCoord()<=samRecord.getAlignmentStart() &&
+						interval.getEndCoord()>=samRecord.getAlignmentEnd()){
+						count++;
+					}
+				}
+			}
+		}
+		//Divide by a thousand
+		denominator=denominator/1000;
+		//System.out.println((count/denominator)/((float)totalNumberOfReads/1000000));
+		return (count/denominator)/((float)totalNumberOfReads/1000000);
 	}
 
 }

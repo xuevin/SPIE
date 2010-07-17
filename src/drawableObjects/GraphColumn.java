@@ -2,14 +2,14 @@ package drawableObjects;
 
 public class GraphColumn {
 	private float xCoord;
-	private int unscaledHeight;
+	private float averageHits;
 	private int absoluteXStart;
 	private int absoluteXEnd;
-	private int scaledHeight;
+	private float scaledHeight;
 	
-	public GraphColumn(float iXCoord, int iHeight, int iAbsoluteXStart, int iAbsoluteXEnd) {
+	public GraphColumn(float iXCoord, int iHits, int iAbsoluteXStart, int iAbsoluteXEnd) {
 		xCoord = iXCoord;
-		unscaledHeight = iHeight;
+		averageHits = iHits;
 		absoluteXStart = iAbsoluteXStart;
 		absoluteXEnd = iAbsoluteXEnd;
 		scaledHeight=0;
@@ -29,18 +29,18 @@ public class GraphColumn {
 		xCoord=iXCoord;
 		
 	}
-	public int getUnscaledHeight(){
-		return unscaledHeight;
+	public float getAverageHits(){
+		return averageHits;
 	}
-	public void setScaledHeight(int iScaledHeight){
-		scaledHeight=iScaledHeight;
+	public void setScaledHeight(float f){
+		scaledHeight=f;
 	}
-	public int getScaledHeight(){
+	public float getScaledHeight(){
 		return scaledHeight;
 		
 	}
-	public void incrementHeight(int value){
-		unscaledHeight+=value;
+	public void incrementHeight(float value){
+		averageHits+=value;
 	}
 	public void setAbsoluteXCoords(int iAbsoluteXStart, int iAbsoluteXEnd) {
 		absoluteXStart=iAbsoluteXStart;

@@ -5,6 +5,10 @@ public class Interval {
 	private int startCoord;
 	private int endCoord;
 	private int length;
+	/**
+	 * @param iStartCoord the start of the Interval (Incusive)
+	 * @param iLength the length of the Interval (Inclusive) (meaning that 1 base has a length of 1)
+	 */
 	public Interval(int iStartCoord, int iLength){
 		startCoord=iStartCoord;
 		length=iLength;
@@ -15,5 +19,8 @@ public class Interval {
 	}
 	public int getEndCoord(){
 		return endCoord;
+	}
+	public int getLength(){
+		return length;
 	}
 }
