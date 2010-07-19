@@ -420,7 +420,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 						bamFileCount.get(samFileReader)));
 				rpkmBox.add(new JLabel("\tRPKM: " + getRPKM(samFileReader, bamFileCount.get(samFileReader))));
 			}
-			
+			repaint();
 			
 			//At most choose 2 short read samples						
 			//FIXME Temporarily a test button
@@ -519,6 +519,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	}
 	private void multipleIsoformChooserAction() {
 		applet.loadArrayOfIsoforms(getCurrentlySelectedMRNAs());
+		applet.loadCurrentlyViewingShortReads();
 	}
 	
 	/**
