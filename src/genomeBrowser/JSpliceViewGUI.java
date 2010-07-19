@@ -559,7 +559,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 							
 					
 				}catch(Exception e){
-					JOptionPane.showMessageDialog(this,"An error was detected while parsing files","Error",
+					JOptionPane.showMessageDialog(this,"An error was detected while loading the BAM file","Error",
 						JOptionPane.ERROR_MESSAGE);
 					System.err.println("Error Parsing BAM Files");
 					e.printStackTrace();

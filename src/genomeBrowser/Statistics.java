@@ -527,7 +527,7 @@ public class Statistics {
 			case METHOD1: return 0;
 			case METHOD2: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
 			default: return 10;
-			//FIXME
+			//FIXME getting junction weights
 		}	
 	}
 	public static float getRPKM(ArrayList<SAMRecord> allSAMRecord, ArrayList<Interval> constitutiveIntervals,int totalNumberOfReads){

@@ -126,12 +126,12 @@ public class GFF3Parser {
 			}
 			//System.out.println ("Completed in " + (System.currentTimeMillis()-start) + " Milliseconds");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
+			System.err.println("There was a a problem parsing the GFF3");
 			e.printStackTrace();
 		}
 		return "Completed in " + (System.currentTimeMillis()-start) + " Milliseconds";
 	}
-	
+	@Deprecated
 	public Gene get(String geneID){
 		if(inFile!=null){
 			String line;
@@ -191,7 +191,7 @@ public class GFF3Parser {
 				System.out.println ("Completed in " + (System.currentTimeMillis()-start) + " Milliseconds");
 				return newGene;
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
+				System.err.println("There was a a problem parsing the GFF3");
 				e.printStackTrace();
 			} 
 		}

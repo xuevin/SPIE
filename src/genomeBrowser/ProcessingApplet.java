@@ -42,7 +42,6 @@ public class ProcessingApplet extends PApplet{
 	private Collapsed_Unweighted collapsed_Unweighted = new Collapsed_Unweighted();
 	private Uncollapsed_Weighted uncollapsed_Weighted = new Uncollapsed_Weighted();
 	private Uncollapsed_Unweighted uncollapsed_Unweighted = new Uncollapsed_Unweighted();
-	
 
 	private static final long serialVersionUID = 1L;
 	private int width;
@@ -61,6 +60,7 @@ public class ProcessingApplet extends PApplet{
 	private HashMap<Integer,GraphColumn>shortReads_Set_U1;
 	private HashMap<Integer,GraphColumn>shortReads_Set_C1;
 	private HashMap<Integer,GraphColumn>shortReads_Set_C2;
+	
 	private int yScale;
 	private int graphYStart,graphXEnd,graphXStart,graphYEnd,shortReadPlotYStart;
 	
@@ -135,7 +135,7 @@ public class ProcessingApplet extends PApplet{
 	 */
 	public synchronized void draw(){
 		background(255);
-		//text(frameRate,20,20);
+		text(frameRate,20,20);
 			switch(view){
 			case UNCOLLAPSED_UNWEIGHTED:uncollapsed_Unweighted.draw();break;
 			case UNCOLLAPSED_WEIGHTED:uncollapsed_Weighted.draw();break;
@@ -247,7 +247,6 @@ public class ProcessingApplet extends PApplet{
 					stroke(255,0,0,100);
 				}
 				
-				
 				for(GraphColumn column:shortReads_Set_C1.values()){
 					line(column.getScaledX(),shortReadPlotYStart,column.getScaledX(),shortReadPlotYStart-column.getScaledHeight());
 				}	
@@ -282,6 +281,12 @@ public class ProcessingApplet extends PApplet{
 			column.setScaledX(reverse(column.getScaledX()));
 		}
 		for(GraphColumn column:shortReads_Set_U2.values()){
+			column.setScaledX(reverse(column.getScaledX()));
+		}
+		for(GraphColumn column:shortReads_Set_C1.values()){
+			column.setScaledX(reverse(column.getScaledX()));
+		}
+		for(GraphColumn column:shortReads_Set_C2.values()){
 			column.setScaledX(reverse(column.getScaledX()));
 		}
 		
@@ -354,8 +359,8 @@ public class ProcessingApplet extends PApplet{
 		switch(view){
 			case UNCOLLAPSED_UNWEIGHTED:loadUncollapsed_ShortReads(iSamRecords);break;
 			case UNCOLLAPSED_WEIGHTED:loadUncollapsed_ShortReads(iSamRecords);break;
-			case COLLAPSED_UNWEIGHTED:/*loadCollapsed_ShortReads(iShortReads);*/break;
-			case COLLAPSED_WEIGHTED:/*loadCollapsed_ShortReads(iShortReads);*/break;
+			case COLLAPSED_UNWEIGHTED:loadCollapsed_ShortReads(iSamRecords);break;
+			case COLLAPSED_WEIGHTED:loadCollapsed_ShortReads(iSamRecords);break;
 		}
 	}
 	
@@ -417,7 +422,6 @@ public class ProcessingApplet extends PApplet{
 	}
 	public void loadCollapsed_ShortReads(ArrayList<SAMRecord> iSamRecords){
 		//FIXME
-		geneSAMRecords = iSamRecords;
 		HashMap<Integer, Integer> absoluteDensityMap = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, geneSAMRecords);
 		//TODO - NOt sure if this is okay (currentlyViewingIsoforms) 
 		//It would mean that the gene must be loaded before the bam
@@ -490,12 +494,8 @@ public class ProcessingApplet extends PApplet{
 			shortReadsMap.put(i,(new GraphColumn(i, 0, 0, 0)));		
 		}
 		
-		//Get a list of the large consitutitive exons
-		ArrayList<Interval> listOfIntrons = getLargeConstitutiveExons(isoforms);
-		int sum = 0; //Keep track of the sum of these exons
-		for(Interval interval:listOfIntrons){
-			sum+=interval.getLength();
-		}
+		//Get a list of the large consitutitive introns
+		ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
 				
 		int prevPixel = -1;
 		int currentSum=-1;
@@ -508,7 +508,7 @@ public class ProcessingApplet extends PApplet{
 		float maxAverage =0;
 		for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
 			int mappedPixel = (int) scaleAbsoluteCoord_Collapsed(i,absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd, listOfIntrons);
-			//System.out.println(mappedPixel +"---Abs" + iAbsoluteDensity.get(i));
+			//System.out.println(i + "-->" + mappedPixel);// +"---Abs" + iAbsoluteDensity.get(i));
 			if(prevPixel==-1){
 				frameAbsoluteStart=i;
 				frameAbsoluteEnd=i;
@@ -609,18 +609,16 @@ public class ProcessingApplet extends PApplet{
 		
 		Statistics.setTotalNumberOfReads(geneSAMRecords.get(0).getCigar().getReadLength());
 		
-		if(method==2){
-			gridLinesVisible=false;
-		}else{
-			gridLinesVisible=true;
-		}
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
 		Statistics.setOverhang(overhang);
 		if(method==0){
+			gridLinesVisible=true;
 			Statistics.setMethod(Statistics.Method.METHOD0);
 		}else if(method==1){
+			gridLinesVisible=true;
 			Statistics.setMethod(Statistics.Method.METHOD1);
 		}else if(method==2){
+			gridLinesVisible=false;
 			Statistics.setMethod(Statistics.Method.METHOD2);
 		}else{
 			Statistics.setMethod(Statistics.Method.METHOD0);
@@ -829,15 +827,43 @@ public class ProcessingApplet extends PApplet{
 		int sum=0;
 		int totalSum=0;
 		int count=0;
+		
+		boolean valueIsInIntron = false;
+		float relativePosition=0;
+		//Go through the intervals and if the end coord of the interval is less than the value
+		//then increment the count of intervals that need to be substituted
 		for(Interval interval:intervalsToExclude){
 			totalSum+=interval.getLength();
 			if(interval.getEndCoord()<=value){
+				//count how many long introns occur before this position 
 				count++;
 				sum+=interval.getLength();
 			}
+			//Ocassionally there are short reads that fall in regions that should be intronic
+			if(interval.getStartCoord()<value && interval.getEndCoord()>value){
+				valueIsInIntron=true;
+				relativePosition=interval.getStartCoord()+
+				200*((value-interval.getStartCoord())/interval.getLength());//Relative position to the intron
+			}
 		}
-		float newValue = value-sum+(count*200);
-		return map(newValue,low1,high1-totalSum+(intervalsToExclude.size()*200),low2,high2); 
+		float newHigh1=(high1-totalSum)+(intervalsToExclude.size()*200);
+		
+		
+		if(valueIsInIntron){
+			float newValue = (relativePosition-sum)+(count*200);
+			return map(newValue,low1,newHigh1,low2,high2);
+		}else{
+			//All the regions longer than 500 are shortened to 200
+			float newValue = (value-sum)+(count*200);
+			return map(newValue,low1,newHigh1,low2,high2);
+		}
+		
+		
+		
+		 
+		
+		
+		 
 	}
 
 	/**
@@ -858,7 +884,7 @@ public class ProcessingApplet extends PApplet{
 		}		
 	}
 
-	private ArrayList<Interval> getLargeConstitutiveExons(
+	private ArrayList<Interval> getLargeConstitutiveIntrons(
 			Collection<MRNA> isoforms) {
 		//Make a hashmap that represents all the positions available on the gene
 		HashMap<Integer, Boolean> exonMap = new HashMap<Integer, Boolean>();
@@ -1245,7 +1271,7 @@ public class ProcessingApplet extends PApplet{
 		/**
 		 * Draws a label that describes the height at each xCoordinate.
 		 */
-		//FIXME should contain info about both
+		//FIXME should contain info about both sets of short read
 		private void drawUncollapsed_LabelForHeight(){
 			if(shortReads_Set_U1!=null){
 				if(mouseX>=graphXStart && mouseX<=graphXEnd){
@@ -1359,7 +1385,7 @@ public class ProcessingApplet extends PApplet{
 			
 			
 			//Get a list of the large consitutitive exons
-			ArrayList<Interval> listOfIntrons = getLargeConstitutiveExons(isoforms);
+			ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
 			int sum = 0; //Keep track of the sum of these exons
 			for(Interval interval:listOfIntrons){
 				sum+=interval.getLength();
