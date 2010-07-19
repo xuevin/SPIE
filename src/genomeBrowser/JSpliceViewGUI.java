@@ -88,6 +88,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JRadioButtonMenuItem uncollapsed_Weighted;
 	private JRadioButtonMenuItem uncollapsed_Unweighted;
 	private JMenu view;
+	private JPanel rpkmBox;
+	private HashMap<SAMFileReader, String> bamFileName;
 	
 	//Constructor
 	public JSpliceViewGUI(){
@@ -97,6 +99,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		geneRecords=null;
 		listOfSamRecords=new ArrayList<SAMFileReader>();
 		bamFileCount = new HashMap<SAMFileReader, Integer>();
+		bamFileName = new HashMap<SAMFileReader,String>();
 		
 		//MenuItem for loading GFF
 		loadGFFMenuItem = new JMenuItem("Open GFF",'O');
@@ -318,8 +321,13 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		currentShortReadLabel = new JLabel("Sample:");
 		
 		
-		rpkmButton = new JButton("Click to RPKM using custom set of isoforms");
+		rpkmButton = new JButton("Click to update RPKM");
 		rpkmButton.addActionListener(this);
+		
+		//rpkmBox
+		rpkmBox = new JPanel();
+		rpkmBox.setLayout(new BoxLayout(rpkmBox,BoxLayout.Y_AXIS));
+		
 		
 		//graphBox
 		graphBox = new JPanel();
@@ -338,6 +346,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		graphBox.add(compatibleShortReadsCheckBox);
 		graphBox.add(new JSeparator());
 		graphBox.add(rpkmButton);
+		graphBox.add(rpkmBox);
 		
 		
 		//tabbedPane
@@ -396,6 +405,23 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			int sample2Size = bamFileCount.get(listOfSamRecords.get(1));
 			applet.loadUncollapsed_TwoShortReadSamples(sample1, sample1Size, sample2, sample2Size);
 		}else if(e.getSource()==rpkmButton){
+			for(SAMFileReader samFileReader:bamFileName.keySet()){ 
+				if(bamFileCount.get(samFileReader)==null){
+					JOptionPane.showMessageDialog(this,"The files have not completed counting","Error",
+							JOptionPane.ERROR_MESSAGE);
+					return;
+				}
+			}	
+			
+			//Should catch an error before comming here
+			rpkmBox.removeAll();
+			for(SAMFileReader samFileReader:bamFileName.keySet()){
+				rpkmBox.add(new JLabel(bamFileName.get(samFileReader) + ":" + 
+						bamFileCount.get(samFileReader)));
+				rpkmBox.add(new JLabel("\tRPKM: " + getRPKM(samFileReader, bamFileCount.get(samFileReader))));
+			}
+			
+			
 			//At most choose 2 short read samples						
 			//FIXME Temporarily a test button
 //			Gene gene = getCurrentlySelectedGene();
@@ -552,10 +578,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					
 					currentShortReadLabel.setText("Sample: "+shortReadChooser.getSelectedItem().toString());
 					
+					bamFileName.put(samRecords,name);
+					
 					actionWhenBothFilesAreLoaded();
 					SAMFileReader clone = new SAMFileReader(inputBamFile,inputBamIndex);
 					clone.setValidationStringency(SAMFileReader.ValidationStringency.SILENT);
-					new Thread(new CountReadsInBAM(samRecords,clone,name,this, bamFileCount,graphBox)).start();
+					new Thread(new CountReadsInBAM(samRecords,clone,name,this, bamFileCount,rpkmBox)).start();
 							
 					
 				}catch(Exception e){

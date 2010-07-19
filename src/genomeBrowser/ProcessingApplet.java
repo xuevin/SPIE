@@ -214,8 +214,6 @@ public class ProcessingApplet extends PApplet{
 				}else{
 					stroke(255,0,0,100);
 				}
-				
-				
 				for(GraphColumn column:shortReads_Set_U1.values()){
 					line(column.getScaledX(),shortReadPlotYStart,column.getScaledX(),shortReadPlotYStart-column.getScaledHeight());
 				}	
