@@ -8,7 +8,7 @@ public class Main {
 	}
 	public static void createAndShow(){
 		//Create a JFrame
-		JFrame frame= new JFrame("JSpliceView");
+		JFrame frame= new JFrame("VIsualizing Transcriptome Objectively");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		JSpliceViewGUI panel = new JSpliceViewGUI();
 		frame.add(panel);

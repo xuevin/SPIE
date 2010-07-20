@@ -109,11 +109,13 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		//MenuItem for loading BAM
 		loadBAMMenuItem = new JMenuItem("Load Bam",'L');
+		loadBAMMenuItem.setMnemonic(KeyEvent.VK_L);
 		loadBAMMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.META_MASK));
 		loadBAMMenuItem.addActionListener(this);
 		
 		//MenuItem for saving PNG
 		saveMenuItem = new JMenuItem("Save",'s');
+		saveMenuItem.setMnemonic(KeyEvent.VK_S);
 		saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.META_MASK));
 		saveMenuItem.addActionListener(this);
 		
@@ -140,19 +142,23 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		collapsed_Weighted = new JRadioButtonMenuItem("Collapsed Weighted");
 		collapsed_Weighted.addActionListener(this);
+		collapsed_Weighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_4, ActionEvent.META_MASK));
 		collapsed_Weighted.setEnabled(false);
 		
 		collapsed_Unweighted = new JRadioButtonMenuItem("Collapsed Unweighted");
 		collapsed_Unweighted.addActionListener(this);
+		collapsed_Unweighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_3, ActionEvent.META_MASK));
 		collapsed_Unweighted.setEnabled(false);
 		
 		uncollapsed_Weighted = new JRadioButtonMenuItem("Uncollapsed Weighted");
 		uncollapsed_Weighted.addActionListener(this);
+		uncollapsed_Weighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2, ActionEvent.META_MASK));
 		uncollapsed_Weighted.setEnabled(false);
 		
 		
 		uncollapsed_Unweighted = new JRadioButtonMenuItem("Uncollapsed Unweighted");
 		uncollapsed_Unweighted.addActionListener(this);
+		uncollapsed_Unweighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_1, ActionEvent.META_MASK));
 		uncollapsed_Unweighted.setEnabled(false);
 		
 		ButtonGroup viewGroup = new ButtonGroup();
@@ -163,10 +169,11 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		
 		view = new JMenu("View");
-		view.add(collapsed_Unweighted);
-		view.add(collapsed_Weighted);
 		view.add(uncollapsed_Unweighted);
 		view.add(uncollapsed_Weighted);
+		view.add(collapsed_Unweighted);
+		view.add(collapsed_Weighted);
+		
 		
 		//MenuBar
 		menuBar = new JMenuBar();
