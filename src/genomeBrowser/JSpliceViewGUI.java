@@ -34,7 +34,6 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
@@ -104,24 +103,24 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		//MenuItem for loading GFF
 		loadGFFMenuItem = new JMenuItem("Open GFF",'O');
 		loadGFFMenuItem.setMnemonic(KeyEvent.VK_O);
-		loadGFFMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.META_MASK));
+		loadGFFMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, ActionEvent.CTRL_MASK));
 		loadGFFMenuItem.addActionListener(this);
 		
 		//MenuItem for loading BAM
 		loadBAMMenuItem = new JMenuItem("Load Bam",'L');
 		loadBAMMenuItem.setMnemonic(KeyEvent.VK_L);
-		loadBAMMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.META_MASK));
+		loadBAMMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, ActionEvent.CTRL_MASK));
 		loadBAMMenuItem.addActionListener(this);
 		
 		//MenuItem for saving PNG
 		saveMenuItem = new JMenuItem("Save",'s');
 		saveMenuItem.setMnemonic(KeyEvent.VK_S);
-		saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.META_MASK));
+		saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
 		saveMenuItem.addActionListener(this);
 		
 		//MenuItem for Quiting
 		quit = new JMenuItem("Quit");
-		quit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.META_MASK));
+		quit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
 		quit.addActionListener(this);
 		
 		//MenuItem for About
@@ -142,23 +141,23 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		collapsed_Weighted = new JRadioButtonMenuItem("Collapsed Weighted");
 		collapsed_Weighted.addActionListener(this);
-		collapsed_Weighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_4, ActionEvent.META_MASK));
+		collapsed_Weighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_4, ActionEvent.CTRL_MASK));
 		collapsed_Weighted.setEnabled(false);
 		
 		collapsed_Unweighted = new JRadioButtonMenuItem("Collapsed Unweighted");
 		collapsed_Unweighted.addActionListener(this);
-		collapsed_Unweighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_3, ActionEvent.META_MASK));
+		collapsed_Unweighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_3, ActionEvent.CTRL_MASK));
 		collapsed_Unweighted.setEnabled(false);
 		
 		uncollapsed_Weighted = new JRadioButtonMenuItem("Uncollapsed Weighted");
 		uncollapsed_Weighted.addActionListener(this);
-		uncollapsed_Weighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2, ActionEvent.META_MASK));
+		uncollapsed_Weighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_2, ActionEvent.CTRL_MASK));
 		uncollapsed_Weighted.setEnabled(false);
 		
 		
 		uncollapsed_Unweighted = new JRadioButtonMenuItem("Uncollapsed Unweighted");
 		uncollapsed_Unweighted.addActionListener(this);
-		uncollapsed_Unweighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_1, ActionEvent.META_MASK));
+		uncollapsed_Unweighted.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_1, ActionEvent.CTRL_MASK));
 		uncollapsed_Unweighted.setEnabled(false);
 		
 		ButtonGroup viewGroup = new ButtonGroup();
@@ -180,6 +179,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		menuBar.add(file);
 		menuBar.add(view);
 		menuBar.add(help);
+		menuBar.requestFocusInWindow();
 		
 		//readsCounter
 		readsCounter= new JLabel("Reads:0");
@@ -724,7 +724,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	}
 	public void valueChanged(ListSelectionEvent e) {
 		if(multiIsoformChooser.isEnabled()){
-			multipleIsoformChooserAction();	
+			multipleIsoformChooserAction();
 		}
 			
 	}
@@ -805,6 +805,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				collapsed_Unweighted.isSelected()){
 			multiIsoformChooser.setSelectedIndex(1);
 		}
+		menuBar.requestFocusInWindow();
 	}
 	public void mousePressed(MouseEvent e) {
 		// TODO Auto-generated method stub
