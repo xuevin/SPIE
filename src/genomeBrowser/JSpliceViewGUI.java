@@ -58,7 +58,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private static final long serialVersionUID = 1L;
 	private JMenuBar menuBar;
 	private JMenu file,help;
-	private JMenuItem quit,loadGFFMenuItem,loadBAMMenuItem, saveMenuItem, about;
+	private JMenuItem quit,loadGFFMenuItem,loadBAMMenuItem, saveMenuItemPNG, about;
 	private JFileChooser fileChooser;
 	private ProcessingApplet applet;
 	private HashMap<String,Gene> geneRecords;
@@ -87,6 +87,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JMenu view;
 	private JPanel rpkmBox;
 	private HashMap<SAMFileReader, String> bamFileName;
+	private JMenuItem saveMenuItemPDF;
 	
 	//Constructor
 	public JSpliceViewGUI(){
@@ -111,10 +112,17 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		loadBAMMenuItem.addActionListener(this);
 		
 		//MenuItem for saving PNG
-		saveMenuItem = new JMenuItem("Save",'s');
-		saveMenuItem.setMnemonic(KeyEvent.VK_S);
-		saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
-		saveMenuItem.addActionListener(this);
+		saveMenuItemPNG = new JMenuItem("Save as PNG",'s');
+		saveMenuItemPNG.setMnemonic(KeyEvent.VK_S);
+		saveMenuItemPNG.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, ActionEvent.CTRL_MASK));
+		saveMenuItemPNG.addActionListener(this);
+		
+		
+		//MenuItem for saving PDF
+		saveMenuItemPDF = new JMenuItem("Save as PDF",'e');
+		saveMenuItemPDF.setMnemonic(KeyEvent.VK_E);
+		saveMenuItemPDF.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, ActionEvent.CTRL_MASK));
+		saveMenuItemPDF.addActionListener(this);
 		
 		//MenuItem for Quiting
 		quit = new JMenuItem("Quit");
@@ -132,7 +140,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		file = new JMenu("File");
 		file.add(loadGFFMenuItem);
 		file.add(loadBAMMenuItem);
-		file.add(saveMenuItem);
+		file.add(saveMenuItemPNG);
+		file.add(saveMenuItemPDF);
 		file.add(new JSeparator());
 		file.add(quit);
 		
@@ -375,8 +384,10 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			loadGFFMenuItemAction();
 		}else if(e.getSource()==loadBAMMenuItem){
 			loadBAMMenuItemAction();
-		}else if(e.getSource()==saveMenuItem){
-			saveMenuItemAction();
+		}else if(e.getSource()==saveMenuItemPNG){
+			saveMenuItemActionPNG();
+		}else if(e.getSource()==saveMenuItemPDF){
+			saveMenuItemActionPDF();
 		}else if(e.getSource()==spliceLinesCheckBox){
 			applet.setSpliceLinesVisible(spliceLinesCheckBox.isSelected());
 		}else if(e.getSource()==isCodingCheckBox){
@@ -467,6 +478,14 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			
 		}
 	}
+	private void saveMenuItemActionPDF() {
+		int returnVal = fileChooser.showSaveDialog(JSpliceViewGUI.this);
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            applet.printPDF(file.toString()+".pdf");
+        }
+		
+	}
 	private void changeMethod() {
 		int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
 		try{
@@ -537,12 +556,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	 * Action to be performed when save menu is clicked 
 	 * This action asks the user to save the current image as a PNG in a directory
 	 */
-	private void saveMenuItemAction() {
+	private void saveMenuItemActionPNG() {
 		int returnVal = fileChooser.showSaveDialog(JSpliceViewGUI.this);
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
             applet.save(file.toString()+".png");
-        } 
+        }
 	}
 	private void reloadButonAction(){
 		Gene gene = getCurrentlySelectedGene();

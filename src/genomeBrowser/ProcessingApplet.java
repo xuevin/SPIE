@@ -29,6 +29,7 @@ import backgroundTasks.UpdateAnimation;
 import net.sf.samtools.SAMRecord;
 
 import processing.core.*;
+import processing.pdf.*;
 
 public class ProcessingApplet extends PApplet{
 	public enum View{
@@ -842,6 +843,8 @@ public class ProcessingApplet extends PApplet{
 	private HashMap<String,MRNA> hashOfIsoforms; //Key is the MRNA ID
 	private View view;
 	private boolean constitutiveRegionsVisible;
+	private boolean recordPDF;
+	private String locationToSave;
 	
 	/**
 	 * Instantiates a new processing applet.
@@ -904,17 +907,25 @@ public class ProcessingApplet extends PApplet{
 	 * @see processing.core.PApplet#draw()
 	 */
 	public synchronized void draw(){
+		if(recordPDF){
+			beginRecord(PDF,locationToSave);
+			textFont(createFont("Arial", 16));
+		}
 		background(255);
 		text(frameRate,20,20);
-			switch(view){
+		switch(view){
 			case UNCOLLAPSED_UNWEIGHTED:uncollapsed_Unweighted.draw();drawUncollapsed_ShortReads();break;
 			case UNCOLLAPSED_WEIGHTED:uncollapsed_Weighted.draw();drawUncollapsed_ShortReads();break;
 			case COLLAPSED_UNWEIGHTED:collapsed_Unweighted.draw();drawCollapsed_ShortReads();break;
 			case COLLAPSED_WEIGHTED:collapsed_Weighted.draw();drawCollapsed_ShortReads();break;
-		}	
+		}
+		if(recordPDF){
+			endRecord();
+			recordPDF=false;
+		    textFont(loadFont("Calibri-16.vlw"));
+		}
+		
 	}
-
-	;
 	
 	/**
 	 * Sets the new size of the PApplet
@@ -1695,5 +1706,14 @@ public class ProcessingApplet extends PApplet{
 				column.setScaledX(reverse(column.getScaledX()));
 			}
 		}
+	}
+	public synchronized void printPDF(String string) {
+//		String[] arrayOfFonts = PGraphicsPDF.listFonts();
+//		for(int i =0;i<arrayOfFonts.length;i++){
+//			System.out.println(arrayOfFonts[i]);
+//		}
+		locationToSave=string;
+		recordPDF =true;
+		
 	}
 }
