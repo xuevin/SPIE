@@ -119,7 +119,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		
 		//MenuItem for saving PDF
-		saveMenuItemPDF = new JMenuItem("Save as PDF",'e');
+		saveMenuItemPDF = new JMenuItem("Export as PDF",'e');
 		saveMenuItemPDF.setMnemonic(KeyEvent.VK_E);
 		saveMenuItemPDF.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, ActionEvent.CTRL_MASK));
 		saveMenuItemPDF.addActionListener(this);
