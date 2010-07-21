@@ -62,9 +62,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JFileChooser fileChooser;
 	private ProcessingApplet applet;
 	private HashMap<String,Gene> geneRecords;
-	private JCheckBox spliceLinesCheckBox,isCodingCheckBox,shortReadCheckBox;
+	private JCheckBox spliceLinesCheckBox,isCodingCheckBox,readCheckBox;
 	private JPanel controlBox;
-	private JComboBox geneChooser,shortReadChooser,methodComboBox;
+	private JComboBox geneChooser,readChooser,methodComboBox;
 	private JSlider scaleSlider;
 	private JList multiIsoformChooser;
 	private DefaultListModel isoformList;
@@ -73,7 +73,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JProgressBar bamCounterProgressBar;
 	private ArrayList<SAMFileReader> listOfSamRecords;
 	private JLabel readsCounter;
-	private JCheckBox compatibleShortReadsCheckBox;
+	private JCheckBox constitutiveRegionsVisibleCheckBox;
 	private JSpinner overhangSpinner;
 	private JTabbedPane tabbedPane;
 	private JPanel graphBox;
@@ -213,19 +213,19 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		isCodingCheckBox.setEnabled(false);
 		isCodingCheckBox.addActionListener(this);
 		
-		//ShortReadChooser
-		shortReadChooser = new JComboBox();
-		shortReadChooser.setEnabled(false);
-		shortReadChooser.setPreferredSize((new Dimension(150,20)));
-		shortReadChooser.setMaximumSize(new Dimension(150,25));
-		shortReadChooser.setAlignmentX(LEFT_ALIGNMENT);
-		shortReadChooser.addActionListener(this);
+		//readChooser
+		readChooser = new JComboBox();
+		readChooser.setEnabled(false);
+		readChooser.setPreferredSize((new Dimension(150,20)));
+		readChooser.setMaximumSize(new Dimension(150,25));
+		readChooser.setAlignmentX(LEFT_ALIGNMENT);
+		readChooser.addActionListener(this);
 		
 		//Short Reads CheckBox
-		shortReadCheckBox = new JCheckBox("Show Short Reads");
-		shortReadCheckBox.setAlignmentX(LEFT_ALIGNMENT);
-		shortReadCheckBox.setEnabled(false);
-		shortReadCheckBox.addActionListener(this);
+		readCheckBox = new JCheckBox("Show Reads");
+		readCheckBox.setAlignmentX(LEFT_ALIGNMENT);
+		readCheckBox.setEnabled(false);
+		readCheckBox.addActionListener(this);
 
 		//loadWeightedIsoformButton
 		loadWeightedIsoformButton = new JButton("This is a useless button....");
@@ -287,12 +287,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		shortReadsPlotChooser.setAlignmentX(LEFT_ALIGNMENT);
 		shortReadsPlotChooser.addActionListener(this);
 		
-		//compatibleShortReadsCheckBox
-		compatibleShortReadsCheckBox = new JCheckBox("Overlay Compatible Reads");
-		compatibleShortReadsCheckBox.setAlignmentX(LEFT_ALIGNMENT);
-		compatibleShortReadsCheckBox.setEnabled(false);
-		compatibleShortReadsCheckBox.addActionListener(this);
-		//TODO fix checkbox
+		//constitutiveRegionsVisibleCheckBox
+		constitutiveRegionsVisibleCheckBox = new JCheckBox("Overlay Constitutive Reads");
+		constitutiveRegionsVisibleCheckBox.setAlignmentX(LEFT_ALIGNMENT);
+		constitutiveRegionsVisibleCheckBox.setEnabled(false);
+		constitutiveRegionsVisibleCheckBox.setSelected(true);
+		constitutiveRegionsVisibleCheckBox.addActionListener(this);
 		
 		//Overhang Spinner
 		overhangSpinner = new JSpinner(new SpinnerListModel(
@@ -312,15 +312,17 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		controlBox.add(reloadButton);
 		controlBox.add(spliceLinesCheckBox);
 		controlBox.add(isCodingCheckBox);
-		controlBox.add(shortReadCheckBox);
+		controlBox.add(constitutiveRegionsVisibleCheckBox);
+		controlBox.add(readCheckBox);
 		controlBox.add(new JLabel("Choose a Gene"));
 		controlBox.add(geneChooser);
-		controlBox.add(new JLabel("Choose Short Reads Sample"));
-		controlBox.add(shortReadChooser);
+		controlBox.add(new JLabel("Choose BAM Sample"));
+		controlBox.add(readChooser);
 		controlBox.add(new JLabel("Choose an Isoform"));
 		controlBox.add(listHolder);
 		controlBox.add(loadWeightedIsoformButton);
 		controlBox.add(shortReadsPlotChooser);
+		
 		
 		//currentShortReadLabel
 		currentShortReadLabel = new JLabel("Sample:");
@@ -332,6 +334,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		//rpkmBox
 		rpkmBox = new JPanel();
 		rpkmBox.setLayout(new BoxLayout(rpkmBox,BoxLayout.Y_AXIS));
+		
 		
 		
 		//graphBox
@@ -348,7 +351,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		graphBox.add(scaleSlider);
 		graphBox.add(new JLabel("Exon Overhang"));
 		graphBox.add(overhangSpinner);
-		graphBox.add(compatibleShortReadsCheckBox);
 		graphBox.add(new JSeparator());
 		graphBox.add(rpkmButton);
 		graphBox.add(rpkmBox);
@@ -359,6 +361,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		tabbedPane.setPreferredSize(new Dimension(200,50));
 		tabbedPane.addTab("General", controlBox);
 		tabbedPane.addTab("Statistics", graphBox);
+		
 		
 		
 		add(menuBar,BorderLayout.NORTH);
@@ -379,8 +382,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		}else if(e.getSource()==isCodingCheckBox){
 			//The Graph Always begins with coding strand.
 			applet.flip();
-		}else if(e.getSource()==shortReadCheckBox){
-			applet.setUncollapsed_ShortReadsVisible(shortReadCheckBox.isSelected());
+		}else if(e.getSource()==readCheckBox){
+			applet.setShortReadsVisible(readCheckBox.isSelected());
 		}else if(e.getSource()==quit){
 			System.exit(0);	
 		}else if(e.getSource()==geneChooser){
@@ -441,7 +444,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			
 //				System.out.println(applet.getRPKM(getShortReadMatch(getCurrentlySelectedGene(), getCurrentlySelectedReader()),
 //						bamFileCount.get(getCurrentlySelectedReader()).intValue()));	
-		}else if(e.getSource()==shortReadChooser){
+		}else if(e.getSource()==readChooser){
 			shortReadChooserAction();
 		}else if(e.getSource()==uncollapsed_Unweighted){
 			applet.setView(ProcessingApplet.View.UNCOLLAPSED_UNWEIGHTED);
@@ -459,6 +462,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			applet.setView(ProcessingApplet.View.COLLAPSED_UNWEIGHTED);
 			applet.loadCurrentlyViewingIsoforms();
 			applet.loadCurrentlyViewingShortReads();
+		}else if(e.getSource()==constitutiveRegionsVisibleCheckBox){
+			applet.setConstitutiveRegionsVisible(constitutiveRegionsVisibleCheckBox.isSelected());
+			
 		}
 	}
 	private void changeMethod() {
@@ -479,10 +485,10 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		}	
 	}
 	private void shortReadChooserAction() {
-		if(filesLoaded() &&  shortReadChooser.isEnabled()){
+		if(filesLoaded() &&  readChooser.isEnabled()){
 			SAMFileReader samReader = getCurrentlySelectedReader();
 			Gene gene = getCurrentlySelectedGene();
-			currentShortReadLabel.setText("Sample: "+shortReadChooser.getSelectedItem().toString());
+			currentShortReadLabel.setText("Sample: "+readChooser.getSelectedItem().toString());
 			try{
 				readsCounter.setText("Count: " + bamFileCount.get(getCurrentlySelectedReader())+"");	
 			}catch(NullPointerException e){
@@ -576,17 +582,17 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					samRecords.setValidationStringency(SAMFileReader.ValidationStringency.SILENT);					
 					
 					listOfSamRecords.add(samRecords);
-					shortReadChooser.setEnabled(false);
+					readChooser.setEnabled(false);
 					
 					String name = JOptionPane.showInputDialog(this,"Please Name The Short Reads File", "name");
 					while(bamFileName.values().contains(name)){
 						name = JOptionPane.showInputDialog(this,"Please Enter a Unique File Name", "name");
 					}
-					shortReadChooser.addItem(name);
-					shortReadChooser.setSelectedIndex(listOfSamRecords.size()-1);
-					shortReadChooser.setEnabled(true);
+					readChooser.addItem(name);
+					readChooser.setSelectedIndex(listOfSamRecords.size()-1);
+					readChooser.setEnabled(true);
 					
-					currentShortReadLabel.setText("Sample: "+shortReadChooser.getSelectedItem().toString());
+					currentShortReadLabel.setText("Sample: "+readChooser.getSelectedItem().toString());
 					
 					bamFileName.put(samRecords,name);
 					
@@ -628,7 +634,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				reloadButton.setEnabled(true);
 				uncollapsed_Unweighted.setEnabled(true);
 				collapsed_Unweighted.setEnabled(true);
+				constitutiveRegionsVisibleCheckBox.setEnabled(true);
 				uncollapsed_Unweighted.setSelected(true);
+				
 				
 				//Fill in choices for gene the user can view
 				geneChooser.setEnabled(false);
@@ -704,7 +712,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private void actionWhenBothFilesAreLoaded(){
 		if(filesLoaded()){
 			
-			shortReadCheckBox.setEnabled(true);
+			readCheckBox.setEnabled(true);
 			loadWeightedIsoformButton.setEnabled(true);
 			multiIsoformChooser.setEnabled(true);
 			collapsed_Weighted.setEnabled(true);
@@ -721,7 +729,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				applet.loadShortReads(getShortReadMatch(gene, samRecords));
 			}
 			applet.setShortReadsVisible(true);
-			shortReadCheckBox.setSelected(true);
+			readCheckBox.setSelected(true);
 			scaleSlider.setEnabled(true);
 			overhangSpinner.setEnabled(true);
 		}
@@ -738,12 +746,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	 * @return the currently selected reader (users refer to this as a sample)
 	 */
 	private SAMFileReader getCurrentlySelectedReader(){
-		if(shortReadChooser.getSelectedIndex()<0){
+		if(readChooser.getSelectedIndex()<0){
 			System.err.println("There was an error when trying to get the currently selected short read");
 			return null;
 		}
-		if(listOfSamRecords.get(shortReadChooser.getSelectedIndex())!=null){
-			return listOfSamRecords.get(shortReadChooser.getSelectedIndex());	
+		if(listOfSamRecords.get(readChooser.getSelectedIndex())!=null){
+			return listOfSamRecords.get(readChooser.getSelectedIndex());	
 		}else{
 			System.err.println("There was an error when trying to get the currently selected short read");
 			return null;

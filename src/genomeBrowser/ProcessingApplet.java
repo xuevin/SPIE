@@ -406,7 +406,7 @@ public class ProcessingApplet extends PApplet{
 			}
 	
 			private void drawWeightedConstitutiveRectangles(){
-				if(weightedConstitutiveRectangles!=null){
+				if(constitutiveRegionsVisible){
 					synchronized (weightedConstitutiveRectangles) {
 							for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){
 								fill(rectangle.getColor());
@@ -493,54 +493,6 @@ public class ProcessingApplet extends PApplet{
 	//			}
 	//		}
 		}
-	private class Uncollapsed_Weighted extends Weighted{
-		
-		public Uncollapsed_Weighted() {
-			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
-			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
-			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
-			referenceLabels= new ArrayList<Label>();
-			errorBars = new ArrayList<ErrorBar>();
-			junctionList = new ArrayList<Junction>();
-		}
-	
-		@Override
-		protected float scaleLength(float length,
-				ArrayList<Interval> listOfIntrons) {
-			return map(length,0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
-		}
-	
-		@Override
-		protected float scalePosition(float position,
-				ArrayList<Interval> listOfIntrons) {
-			return scaleAbsoluteCoord_Uncollapsed(position);
-		}
-	}
-	private class Collapsed_Weighted extends Weighted{
-		public Collapsed_Weighted() {
-			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
-			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
-			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
-			referenceLabels= new ArrayList<Label>();
-			errorBars = new ArrayList<ErrorBar>();
-			junctionList = new ArrayList<Junction>();
-		}
-		@Override
-		protected float scaleLength(float length,
-				ArrayList<Interval> listOfIntrons) {
-			int sum=0;
-			for(Interval interval:listOfIntrons){
-				sum+=interval.getLength();
-			}	
-			return map(length,0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-		}
-	
-		@Override
-		protected float scalePosition(float position,
-				ArrayList<Interval> listOfIntrons) {
-			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
-		}
-	}
 	private abstract class Unweighted{
 			protected ArrayList<Rectangle_Unweighted> unweightedIsoforms;
 			protected ArrayList<Rectangle_Unweighted> unweightedConstitutiveRectangle;
@@ -592,15 +544,16 @@ public class ProcessingApplet extends PApplet{
 				
 			}
 			private void drawUnweightedConstitutiveRects() {
-				synchronized (unweightedConstitutiveRectangle) {
-					
-					for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
-						fill(rectangle.getColor());
-						rect(rectangle.getScaledXCoord(), rectangle.getScaledYCoord(), rectangle.getScaledLength(), rectangle.getScaledHeight());	
-					}
-					fill(0);
-				
+				if(constitutiveRegionsVisible){
+					synchronized (unweightedConstitutiveRectangle) {
+						for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
+							fill(rectangle.getColor());
+							rect(rectangle.getScaledXCoord(), rectangle.getScaledYCoord(), rectangle.getScaledLength(), rectangle.getScaledHeight());	
+						}
+						fill(0);
+					}	
 				}
+				
 				
 			}
 			private void drawUnweightedIsoformLabels() {
@@ -757,6 +710,54 @@ public class ProcessingApplet extends PApplet{
 			protected abstract float scaleLength(float length,ArrayList<Interval> listOfIntrons);
 			protected abstract float scalePosition(float position,ArrayList<Interval> listOfIntrons);
 		}
+	private class Uncollapsed_Weighted extends Weighted{
+		
+		public Uncollapsed_Weighted() {
+			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
+			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
+			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
+			referenceLabels= new ArrayList<Label>();
+			errorBars = new ArrayList<ErrorBar>();
+			junctionList = new ArrayList<Junction>();
+		}
+	
+		@Override
+		protected float scaleLength(float length,
+				ArrayList<Interval> listOfIntrons) {
+			return map(length,0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+		}
+	
+		@Override
+		protected float scalePosition(float position,
+				ArrayList<Interval> listOfIntrons) {
+			return scaleAbsoluteCoord_Uncollapsed(position);
+		}
+	}
+	private class Collapsed_Weighted extends Weighted{
+		public Collapsed_Weighted() {
+			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
+			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
+			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
+			referenceLabels= new ArrayList<Label>();
+			errorBars = new ArrayList<ErrorBar>();
+			junctionList = new ArrayList<Junction>();
+		}
+		@Override
+		protected float scaleLength(float length,
+				ArrayList<Interval> listOfIntrons) {
+			int sum=0;
+			for(Interval interval:listOfIntrons){
+				sum+=interval.getLength();
+			}	
+			return map(length,0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
+		}
+	
+		@Override
+		protected float scalePosition(float position,
+				ArrayList<Interval> listOfIntrons) {
+			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
+		}
+	}
 	private class Collapsed_Unweighted extends Unweighted{
 	
 		public Collapsed_Unweighted(){
@@ -840,6 +841,7 @@ public class ProcessingApplet extends PApplet{
 	private Thread currentAnimation;
 	private HashMap<String,MRNA> hashOfIsoforms; //Key is the MRNA ID
 	private View view;
+	private boolean constitutiveRegionsVisible;
 	
 	/**
 	 * Instantiates a new processing applet.
@@ -864,6 +866,7 @@ public class ProcessingApplet extends PApplet{
 		shortReadsPlotVisible=true;
 		splicingLinesVisible=true;
 		gridLinesVisible=true;
+		constitutiveRegionsVisible=true;
 		
 		tempConstitutiveUnscaledPositions=new ArrayList<Integer>();
 		customConstitutiveUnscaledPositions = new ArrayList<Integer>();
@@ -1064,7 +1067,7 @@ public class ProcessingApplet extends PApplet{
 	 * 
 	 * @param bool the boolean (true means the short reads are visible)
 	 */
-	public void setUncollapsed_ShortReadsVisible(boolean bool) {
+	public void setShortReadsVisible(boolean bool) {
 		shortReadsPlotVisible=bool;	
 	}
 	/**
@@ -1074,9 +1077,6 @@ public class ProcessingApplet extends PApplet{
 	 */
 	public void setSpliceLinesVisible(boolean bool) {
 		splicingLinesVisible=bool;
-	}
-	public void setShortReadsVisible(boolean bool){
-		
 	}
 	public void loadArrayOfIsoforms(ArrayList<MRNA> listOfMRNA){
 		loadNewArrayOfIsoforms(	listOfMRNA, absoluteStartOfGene, absoluteLengthOfGene, isCodingStrand);
@@ -1209,142 +1209,20 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 	}
-	private synchronized void fillUncollapsed_ScaledShortReadsPlot(HashMap<Integer,GraphColumn> shortReadsMap,
-			HashMap<Integer,Integer> densityMap){
-		shortReadsMap.clear();
-		//Make a line for every Pixel
-		for(int i =graphXStart;i<=graphXEnd;i++){
-			shortReadsMap.put(i,(new GraphColumn(i, 0, 0, 0)));		
-		}
-		int prevPixel = -1;
-		int currentSum=-1;
-		int numberOfShortReads=-1;
-		int frameAbsoluteStart=-1;
-		int frameAbsoluteEnd = -1;
-		
-		//Goes through each of the genomic coordinates and attempts to map it to a pixel
-		//In the end, a pixel represents the average number of short reads that cross it
-		float maxAverage =0;
-		for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
-			int mappedPixel = (int) map(i,absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd);
-			//System.out.println(mappedPixel +"---Abs" + iAbsoluteDensity.get(i));
-			if(prevPixel==-1){
-				frameAbsoluteStart=i;
-				frameAbsoluteEnd=i;
-				numberOfShortReads=1;
-				currentSum=densityMap.get(i);
-				prevPixel=mappedPixel;
-			}else if(mappedPixel!= prevPixel){
-				float average = (float)currentSum/numberOfShortReads;
-				if(average>maxAverage){
-					maxAverage=average;
-				}
-				shortReadsMap.get(prevPixel).incrementHeight(average);
-				shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
-				
-				prevPixel=mappedPixel;
-				numberOfShortReads=1;
-				currentSum=densityMap.get(i);
-				frameAbsoluteStart=i;
-				frameAbsoluteEnd=i;
-			}else if(i==absoluteEndOfGene){
-				frameAbsoluteEnd=i;
-				numberOfShortReads++;
-				shortReadsMap.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
-				shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
-			}else{	
-				currentSum+=densityMap.get(i);
-				frameAbsoluteEnd=i;
-				numberOfShortReads++;
-			} 
-//			System.out.println(i + "----"  + iAbsoluteDensity.get(i));
-		}
-		for(GraphColumn column:shortReadsMap.values()){
-			column.setScaledHeight((int) map(column.getAverageHits(),0,maxAverage,0,80));
-		}
-	}
-	private synchronized void fillCollapsed_ScaledShortReadsPlot(HashMap<Integer,GraphColumn> shortReadsMap,
-			HashMap<Integer,Integer> densityMap,ArrayList<MRNA> isoforms){
-		shortReadsMap.clear();
-		//Make a line for every Pixel
-		for(int i =graphXStart;i<=graphXEnd;i++){
-			shortReadsMap.put(i,(new GraphColumn(i, 0, 0, 0)));		
-		}
-		
-		//Get a list of the large consitutitive introns
-		ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
-				
-		int prevPixel = -1;
-		int currentSum=-1;
-		int numberOfShortReads=-1;
-		int frameAbsoluteStart=-1;
-		int frameAbsoluteEnd = -1;
-		
-		//Goes through each of the genomic coordinates and attempts to map it to a pixel
-		//In the end, a pixel represents the average number of short reads that cross it
-		float maxAverage =0;
-		for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
-			int mappedPixel = (int) scaleAbsoluteCoord_Collapsed(i,listOfIntrons);
-			if(mappedPixel<graphXStart||mappedPixel>graphXEnd){
-				System.err.println(mappedPixel);
-				return;
-			}
-			//System.out.println(i + "-->" + mappedPixel);// +"---Abs" + iAbsoluteDensity.get(i));
-			if(prevPixel==-1){
-				frameAbsoluteStart=i;
-				frameAbsoluteEnd=i;
-				numberOfShortReads=1;
-				currentSum=densityMap.get(i);
-				prevPixel=mappedPixel;
-			}else if(mappedPixel!= prevPixel){
-				float average = (float)currentSum/numberOfShortReads;
-				if(average>maxAverage){
-					maxAverage=average;
-				}
-				shortReadsMap.get(prevPixel).incrementHeight(average);
-				shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
-				
-				prevPixel=mappedPixel;
-				numberOfShortReads=1;
-				currentSum=densityMap.get(i);
-				frameAbsoluteStart=i;
-				frameAbsoluteEnd=i;
-			}else if(i==absoluteEndOfGene){
-				frameAbsoluteEnd=i;
-				numberOfShortReads++;
-				shortReadsMap.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
-				shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
-			}else{	
-				currentSum+=densityMap.get(i);
-				frameAbsoluteEnd=i;
-				numberOfShortReads++;
-			} 
-//			System.out.println(i + "----"  + iAbsoluteDensity.get(i));
-		}
-		for(GraphColumn column:shortReadsMap.values()){
-			column.setScaledHeight((int) map(column.getAverageHits(),0,maxAverage,0,80));
-		}
-	}
-	/**
-	 * Load short reads.
-	 *
-	 * @param iShortReads the i short reads
-	 */
-	private synchronized void loadUncollapsed_ShortReads(ArrayList<SAMRecord> iSamRecords){
-		
-		HashMap<Integer, Integer> absoluteDensityMap = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, geneSAMRecords);
-		fillUncollapsed_ScaledShortReadsPlot(shortReads_Set_U1,absoluteDensityMap);
-		if(!isCodingStrand){
-			for(GraphColumn column:shortReads_Set_U1.values()){
-				column.setScaledX(reverse(column.getScaledX()));
-			}
-		}
-	}
 	public synchronized void loadCurrentlyViewingIsoforms(){
 				loadNewArrayOfIsoforms(	currentlyViewingIsoforms,
 										absoluteStartOfGene,
 										absoluteLengthOfGene,
 										isCodingStrand);
+	}
+	public void loadCurrentlyViewingShortReads() {
+		if(geneSAMRecords!=null){
+			loadShortReads(geneSAMRecords);	
+		}
+				
+	}
+	public ArrayList<MRNA> getCustomListOfIsoforms(){
+		return customListOfIsoforms;
 	}
 	/**
 	 * Adjusts the Y Scale
@@ -1353,6 +1231,10 @@ public class ProcessingApplet extends PApplet{
 	 */
 	public void setYScale(int iYScale){
 		yScale=iYScale;
+	}
+	public void setConstitutiveRegionsVisible(boolean bool) {
+		constitutiveRegionsVisible=bool;
+		
 	}
 	/**
 	 * Clears all the constitutive arrays
@@ -1683,13 +1565,135 @@ public class ProcessingApplet extends PApplet{
 		}
 		return listOfIntrons;
 	}
-	public void loadCurrentlyViewingShortReads() {
-		if(geneSAMRecords!=null){
-			loadShortReads(geneSAMRecords);	
+	private synchronized void fillUncollapsed_ScaledShortReadsPlot(HashMap<Integer,GraphColumn> shortReadsMap,
+				HashMap<Integer,Integer> densityMap){
+			shortReadsMap.clear();
+			//Make a line for every Pixel
+			for(int i =graphXStart;i<=graphXEnd;i++){
+				shortReadsMap.put(i,(new GraphColumn(i, 0, 0, 0)));		
+			}
+			int prevPixel = -1;
+			int currentSum=-1;
+			int numberOfShortReads=-1;
+			int frameAbsoluteStart=-1;
+			int frameAbsoluteEnd = -1;
+			
+			//Goes through each of the genomic coordinates and attempts to map it to a pixel
+			//In the end, a pixel represents the average number of short reads that cross it
+			float maxAverage =0;
+			for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
+				int mappedPixel = (int) map(i,absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd);
+				//System.out.println(mappedPixel +"---Abs" + iAbsoluteDensity.get(i));
+				if(prevPixel==-1){
+					frameAbsoluteStart=i;
+					frameAbsoluteEnd=i;
+					numberOfShortReads=1;
+					currentSum=densityMap.get(i);
+					prevPixel=mappedPixel;
+				}else if(mappedPixel!= prevPixel){
+					float average = (float)currentSum/numberOfShortReads;
+					if(average>maxAverage){
+						maxAverage=average;
+					}
+					shortReadsMap.get(prevPixel).incrementHeight(average);
+					shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
+					
+					prevPixel=mappedPixel;
+					numberOfShortReads=1;
+					currentSum=densityMap.get(i);
+					frameAbsoluteStart=i;
+					frameAbsoluteEnd=i;
+				}else if(i==absoluteEndOfGene){
+					frameAbsoluteEnd=i;
+					numberOfShortReads++;
+					shortReadsMap.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
+					shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
+				}else{	
+					currentSum+=densityMap.get(i);
+					frameAbsoluteEnd=i;
+					numberOfShortReads++;
+				} 
+	//			System.out.println(i + "----"  + iAbsoluteDensity.get(i));
+			}
+			for(GraphColumn column:shortReadsMap.values()){
+				column.setScaledHeight((int) map(column.getAverageHits(),0,maxAverage,0,80));
+			}
 		}
-				
-	}
-	public ArrayList<MRNA> getCustomListOfIsoforms(){
-		return customListOfIsoforms;
+	private synchronized void fillCollapsed_ScaledShortReadsPlot(HashMap<Integer,GraphColumn> shortReadsMap,
+				HashMap<Integer,Integer> densityMap,ArrayList<MRNA> isoforms){
+			shortReadsMap.clear();
+			//Make a line for every Pixel
+			for(int i =graphXStart;i<=graphXEnd;i++){
+				shortReadsMap.put(i,(new GraphColumn(i, 0, 0, 0)));		
+			}
+			
+			//Get a list of the large consitutitive introns
+			ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
+					
+			int prevPixel = -1;
+			int currentSum=-1;
+			int numberOfShortReads=-1;
+			int frameAbsoluteStart=-1;
+			int frameAbsoluteEnd = -1;
+			
+			//Goes through each of the genomic coordinates and attempts to map it to a pixel
+			//In the end, a pixel represents the average number of short reads that cross it
+			float maxAverage =0;
+			for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
+				int mappedPixel = (int) scaleAbsoluteCoord_Collapsed(i,listOfIntrons);
+				if(mappedPixel<graphXStart||mappedPixel>graphXEnd){
+					System.err.println(mappedPixel);
+					return;
+				}
+				//System.out.println(i + "-->" + mappedPixel);// +"---Abs" + iAbsoluteDensity.get(i));
+				if(prevPixel==-1){
+					frameAbsoluteStart=i;
+					frameAbsoluteEnd=i;
+					numberOfShortReads=1;
+					currentSum=densityMap.get(i);
+					prevPixel=mappedPixel;
+				}else if(mappedPixel!= prevPixel){
+					float average = (float)currentSum/numberOfShortReads;
+					if(average>maxAverage){
+						maxAverage=average;
+					}
+					shortReadsMap.get(prevPixel).incrementHeight(average);
+					shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
+					
+					prevPixel=mappedPixel;
+					numberOfShortReads=1;
+					currentSum=densityMap.get(i);
+					frameAbsoluteStart=i;
+					frameAbsoluteEnd=i;
+				}else if(i==absoluteEndOfGene){
+					frameAbsoluteEnd=i;
+					numberOfShortReads++;
+					shortReadsMap.get(prevPixel).incrementHeight((int)((double)currentSum/numberOfShortReads));
+					shortReadsMap.get(prevPixel).setAbsoluteXCoords(frameAbsoluteStart,frameAbsoluteEnd);
+				}else{	
+					currentSum+=densityMap.get(i);
+					frameAbsoluteEnd=i;
+					numberOfShortReads++;
+				} 
+	//			System.out.println(i + "----"  + iAbsoluteDensity.get(i));
+			}
+			for(GraphColumn column:shortReadsMap.values()){
+				column.setScaledHeight((int) map(column.getAverageHits(),0,maxAverage,0,80));
+			}
+		}
+	/**
+	 * Load short reads.
+	 *
+	 * @param iShortReads the i short reads
+	 */
+	private synchronized void loadUncollapsed_ShortReads(ArrayList<SAMRecord> iSamRecords){
+		
+		HashMap<Integer, Integer> absoluteDensityMap = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, geneSAMRecords);
+		fillUncollapsed_ScaledShortReadsPlot(shortReads_Set_U1,absoluteDensityMap);
+		if(!isCodingStrand){
+			for(GraphColumn column:shortReads_Set_U1.values()){
+				column.setScaledX(reverse(column.getScaledX()));
+			}
+		}
 	}
 }
