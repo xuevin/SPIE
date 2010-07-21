@@ -38,6 +38,773 @@ public class ProcessingApplet extends PApplet{
 		UNCOLLAPSED_UNWEIGHTED
 	}
 	
+	private abstract class Weighted{
+			protected ArrayList<Junction> junctionList;
+			protected ArrayList<Rectangle_Weighted> weightedIsoforms;
+			protected ArrayList<Rectangle_Weighted> weightedConstitutiveRectangles;
+			protected ArrayList<ErrorBar> errorBars;
+			protected ArrayList<Rectangle_Unweighted>referenceIsoforms;
+			protected ArrayList<Label> referenceLabels;
+			
+			public void animatedLoad(ProcessingApplet pApplet,ArrayList<SAMRecord> newShortReads, MRNA isoform) {
+				junctionList.clear();
+				errorBars.clear();
+				weightedConstitutiveRectangles.clear();
+				loadShortReads(newShortReads);
+				ArrayList<ShortRead> compatibleShortReads = Statistics.getCompatibleShortReads(isoform, newShortReads);
+				ArrayList<Rectangle_Weighted> exonsOnly= new ArrayList<Rectangle_Weighted>();
+				synchronized (weightedIsoforms) {
+					String id="";
+					for(Rectangle_Weighted rect:weightedIsoforms){
+						if(rect.getScaledHeight()==10){
+							exonsOnly.add(rect);
+						}
+						if(id==""){
+							id=rect.getIsoformID();
+						}else if(id!=rect.getIsoformID()){
+							ArrayList<MRNA> temp = new ArrayList<MRNA>();
+							temp.add(isoform);
+							System.err.println("An attempt was made to animate multiple isoforms at once");
+							loadArrayOfIsoforms(currentlyViewingIsoforms);
+							return;
+						}
+					}
+					weightedIsoforms=exonsOnly;
+				}
+	
+				if(currentAnimation!=null && currentAnimation.isAlive()){
+					currentAnimation.interrupt();
+				}else{
+					currentAnimation = new Thread(new UpdateAnimation(pApplet,isoform,compatibleShortReads,weightedIsoforms));
+					currentAnimation.start();	
+				}	
+				
+			}
+	
+			public synchronized void clear() {
+				weightedConstitutiveRectangles.clear();
+				
+			}
+	
+			public synchronized void draw(){
+				drawWeightedIsoforms();
+			}
+	
+			public synchronized void flip(){
+				for(Rectangle_Weighted rectangle:weightedIsoforms){
+					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+				}
+				for(ErrorBar errorBar:errorBars){
+					errorBar.setScaledXCoord(reverse(errorBar.getScaledXPosition()));
+				}
+				for(Rectangle_Unweighted rectangle:referenceIsoforms){
+					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+				}
+				for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){	
+					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+				}
+				for(Junction junction:junctionList){
+					junction.setLeftScaled(reverse(junction.getLeftScaled()));
+					junction.setRightScaled(reverse(junction.getRightScaled()));
+				}
+			}
+
+			public Rectangle_Weighted getRectFromCoord(int mouseX, int mouseY) {
+				synchronized (weightedIsoforms) {
+					//Iterate through the array and checks to see if the mouse is over it
+					for(Rectangle_Weighted rect:weightedIsoforms){
+						if(	mouseX>rect.getScaledXCoord() &&
+							mouseX<rect.getScaledXCoord()+rect.getScaledLength() &&
+							mouseY>(graphYStart-rect.getWeight()*yScale-rect.getScaledHeight()/2) && 
+							mouseY<(graphYStart-rect.getWeight()*yScale+rect.getScaledHeight()/2) &&
+							rect.getScaledHeight()==10){
+							return rect;
+						}
+					}	
+				}
+				return null;	
+			}
+
+			public synchronized void loadNewArrayOfWeightedIsoforms(Collection<MRNA> listOfMRNA){
+			
+				//Under the condition that the loadShortReads function has already been called
+				if(geneSAMRecords!=null){
+					//Make new arrays
+					weightedIsoforms.clear(); 
+					referenceIsoforms.clear();
+					referenceLabels.clear();
+					errorBars.clear();
+					weightedConstitutiveRectangles.clear();
+					junctionList.clear();
+					
+					ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
+					
+					//Get a list of the large consitutitive exons
+					ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(listOfMRNA);
+					
+					
+					int yRefStart=30; // Start of where the reference labels go
+					//For each isoform
+					for(MRNA mrna:listOfMRNA){
+						hashOfIsoforms.put(mrna.getId(),mrna);
+						int cdsColor = color(150);
+						int exonColor = color(40);
+						if(listOfMRNA.size()>1){	
+							colorMode(HSB, 450,100,50);
+							cdsColor = color(yRefStart,100,100);
+							exonColor = color(yRefStart,100,100);
+							colorMode(RGB,255);
+						}else{
+							fillJunctionList(junctionList,mrna);
+						}
+						
+						ArrayList<ShortRead>compatibleShortReads = Statistics.getCompatibleShortReads(mrna, geneSAMRecords);
+						referenceLabels.add(new Label(mrna.getId(), 10, yRefStart+10));
+						
+						//For each exon
+						int exonCountPosition=0;
+						for(Exon exon :mrna.getExons().values()){
+							//Find the average of the region in mention
+							
+							boolean endExon = false;
+							if(exonCountPosition==0 || exonCountPosition==mrna.getExons().values().size()-1){
+								endExon=true;
+							}
+							float average = Statistics.getWeightOfExon(exon,compatibleShortReads,endExon);
+							exonCountPosition++;
+							
+							//Scale the length and start
+							float lengthScaled= scaleLength(exon.getLength(), listOfIntrons);
+							float startScaled = scalePosition(exon.getStart(), listOfIntrons); 
+							
+							Rectangle_Weighted temp = new Rectangle_Weighted(startScaled, lengthScaled,10,
+									exon.getStart(),exon.getEnd(),mrna.getId(),average,exonColor);
+							weightedIsoforms.add(temp);
+							errorBars.add(new ErrorBar(average,
+									Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleShortReads),
+									temp,mrna.getId(),(startScaled+lengthScaled/2)));
+							
+							//Fill in array that draws the reference isoforms
+							Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart, lengthScaled,10,exon.getStart(),
+									exon.getEnd(),mrna.getId(),exonColor);
+							referenceIsoforms.add(temp2);
+							
+			
+							//Fill in array that draws the scaled constitutive lines
+							//The difference here is that that the first YStartPosition represents the absolute height
+							//It still needs to be scaled (look at drawWeightedConstitutiveLines)
+							for(Interval interval :listOfConstitutiveIntervals){
+								if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
+									int color = color(0,0,255);
+									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
+																								scaleLength(interval.getLength(),listOfIntrons), 
+																								10, 
+																								interval.getStartCoord(), 
+																								interval.getEndCoord(), 
+																								mrna.getId(), 
+																								average, 
+																								color));	
+								}
+							}
+						}
+						//For each CDS
+						for(CDS cds:mrna.getCDS().values()){
+							float lengthScaled= scaleLength(cds.getLength(),listOfIntrons);
+							float startScaled = scalePosition(cds.getStart(), listOfIntrons);
+							
+							//Get the rectangle that is nearest to the xCoordinate who has the same MRNA
+							//to get the appropriate height
+							Rectangle_Weighted exon_Rect=getRectangleNearestToXCoord(weightedIsoforms,mrna.getId(),startScaled);
+							float weight = exon_Rect.getWeight();
+							Rectangle_Weighted temp = new Rectangle_Weighted(startScaled,lengthScaled,20,
+									cds.getStart(),cds.getEnd(),mrna.getId(),weight,cdsColor);
+							weightedIsoforms.add(temp);
+							Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart-5, lengthScaled,20,
+									cds.getStart(),cds.getEnd(),mrna.getId(),cdsColor);
+							referenceIsoforms.add(temp2);
+							
+							//Fill in array that draws the scaled constitutive lines
+							//The difference here is that that the first YStartPosition represents the absolute height
+							//It still needs to be scaled (look at drawWeightedConstitutiveLines)
+							for(Interval interval :listOfConstitutiveIntervals){
+								if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
+									int color = color(0,0,255);
+									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
+																								scaleLength(interval.getLength(),listOfIntrons),
+																								20, 
+																								interval.getStartCoord(), 
+																								interval.getEndCoord(), 
+																								mrna.getId(), 
+																								weight, 
+																								color));	
+								}
+							}
+						}
+						yRefStart+=20;
+					}
+					if(!isCodingStrand){
+						if(weightedIsoforms!=null){
+							for(Rectangle_Weighted rectangle:weightedIsoforms){
+								rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+							}
+						}
+						if(errorBars!=null){
+							for(ErrorBar errorBar:errorBars){
+								errorBar.setScaledXCoord(reverse(errorBar.getScaledXPosition()));
+							}
+						}
+						if(referenceIsoforms!=null){
+							for(Rectangle_Unweighted rectangle:referenceIsoforms){
+								rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+							}
+						}
+						if(weightedConstitutiveRectangles!=null){
+							for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){	
+								rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+							}
+						}
+						if(junctionList!=null){
+							for(Junction junction:junctionList){
+								junction.setLeftScaled(reverse(junction.getLeftScaled()));
+								junction.setRightScaled(reverse(junction.getRightScaled()));
+							}
+						}	
+					}
+				}else{
+					System.err.println("A call was made to loadWeightedIsoforms but there was no shortReadData");
+				}
+				
+			}
+
+			private void drawErrorBars(){
+						if(errorBars!=null){
+							synchronized (errorBars) {
+								for(ErrorBar error:errorBars){
+									double SD = error.getStandardDeviation()*yScale;
+									float newScaledYPosition = graphYStart-(yScale*error.getWeight());
+									int start = (int) (newScaledYPosition-SD);
+									int end = (int) (newScaledYPosition+SD);
+									line(error.getScaledXPosition(),start,error.getScaledXPosition(),end);
+			//						strokeWeight(10);
+			//						point(error.getScaledXPosition(),newScaledYPosition);
+			//						strokeWeight(1);
+								}	
+							}
+						}
+					}
+	
+			/**
+			 * Draws a grid for the weighted Isoforms
+			 */
+			private void drawGrid() {
+				if(gridLinesVisible){
+					line(graphXStart,graphYStart,graphXEnd,graphYStart);
+					line(graphXStart,graphYStart,graphXStart,50);
+					int count =0;
+					stroke(150);
+					for(int i =graphYStart;i>graphYEnd; i-=(yScale)){
+						if(count%5==0){
+							text(""+count,graphXStart-20,i+5);
+							line(graphXStart,i,graphXEnd,i);
+						}
+						count++;	
+					}
+					stroke(0);
+				}
+			}
+	
+			private void drawHoverInfo(){
+				Rectangle_Weighted rect =  getRectUnderMouse();
+				if(rect!=null){
+					fill(200,200);
+					rect(mouseX,mouseY-20,250,120);
+					fill(0);
+					MRNA isoform = hashOfIsoforms.get(rect.getIsoformID());
+					text("Isoform:" + rect.getIsoformID()+
+						"\nStart:\t"+rect.getAbsoluteStart() + 
+						"\nEnd: \t " + rect.getAbsoluteEnd()+
+						"\nLength:\t" + rect.getAbsoluteLength() +
+						"\n#Body Reads:\t" +  Statistics.getNumberOfBodyReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), geneSAMRecords) + 
+						"\n#Junction Reads:\t" + Statistics.getNumberOfJunctionReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), geneSAMRecords)
+						,mouseX+10,mouseY);
+						
+				}	
+			}
+	
+			private void drawJunctionLines() {
+						if(junctionList!=null){
+							synchronized (junctionList) {
+								stroke(255,0,0);
+								strokeWeight(3);
+								for(Junction junction:junctionList){
+									int yPos=graphYStart;
+			//						for(int i=0;i<junction.getHits();i++){
+			//							line(junction.getLeftScaled(),yPos,junction.getRightScaled(),yPos);
+			//							yPos-=yScale;
+			//						}
+									int height = (int) (yPos-(yScale*junction.getWeight()));
+									line(junction.getLeftScaled(),height,junction.getRightScaled(),height);
+									text(junction.getWeight(),junction.getRightScaled(),(int)height);
+								}
+								strokeWeight(1);
+								stroke(1);
+							}
+						}
+						
+						
+					}
+	
+			/**
+			 * Draws a label that describes the height at each xCoordinate.
+			 */
+			//FIXME should contain info about both sets of short read
+			private void drawLabelForHeight(){
+				if(shortReads_Set_U1!=null){
+					if(mouseX>=graphXStart && mouseX<=graphXEnd){
+						text("Average Height "+ getShortReadDensityHeightAt(mouseX) + " @ "+ 
+								"\n"+getAbsoluteCoordinates(mouseX), 350, 650);
+						line(mouseX,shortReadPlotYStart,400,620);
+					}	
+				}
+				
+			}
+	
+			/**
+			 * Draw the labels for the reference isoforms.
+			 */
+			private void drawLabelsForReference() {
+				
+				if(referenceLabels!=null){
+					synchronized (referenceLabels) {
+						for(Label label:referenceLabels){	
+							text(label.getText(),label.getXScaled(),label.getYScaled());
+						}	
+					}
+						
+				}else{
+					System.err.println("Reference Labels are Null!");
+				}
+				
+				
+			}
+	
+			/**
+			 * Draw the reference isoforms and the labels
+			 */
+			private void drawReferenceIsoform() {
+				if(referenceIsoforms!=null){
+					synchronized (referenceIsoforms) {
+						for(Rectangle_Unweighted rectangle:referenceIsoforms){
+							fill(rectangle.getColor());
+							rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());	
+						}
+					}
+					fill(0);
+					drawLabelsForReference();		
+				}
+				
+			}
+	
+			private void drawWeightedConstitutiveRectangles(){
+				if(weightedConstitutiveRectangles!=null){
+					synchronized (weightedConstitutiveRectangles) {
+							for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){
+								fill(rectangle.getColor());
+								float newScaledYCoord = graphYStart-(yScale*rectangle.getWeight()); 
+									//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
+								//Because the rectangle is drawn from the corner, subtract half its height;
+								newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
+								colorMode(HSB, 450,100,50);
+								rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
+								colorMode(RGB,255);
+							}
+							fill(0);
+					}
+				}
+			}
+	
+			/**
+			 * Draw the weighted isoforms
+			 *  
+			 * This function iterates through the list weightedIsoforms to draw them at the correct height.
+			 * It also draws other components such as the grid, errorbars, reference isoforms, and hover 
+			 * information
+			 */
+			private void drawWeightedIsoforms() {
+				drawGrid();
+				synchronized (weightedIsoforms) {
+					
+					for(Rectangle_Weighted rectangle:weightedIsoforms){
+						
+						fill(rectangle.getColor());
+						float newScaledYCoord = graphYStart-(yScale*rectangle.getWeight()); 
+							//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
+						//Because the rectangle is drawn from the corner, subtract half its height;
+						newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
+						colorMode(HSB, 450,100,50);
+						rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
+						colorMode(RGB,255);
+					}
+					
+				}
+				fill(0);
+				drawErrorBars();
+				drawReferenceIsoform();
+				drawWeightedConstitutiveRectangles();
+				drawJunctionLines();
+				drawLabelForHeight();
+				drawHoverInfo();
+			}
+	
+			private void fillJunctionList(ArrayList<Junction> iJunctionList,MRNA isoform) {
+				iJunctionList.clear();
+				ArrayList<MRNA> temp = new ArrayList<MRNA>();
+				temp.add(isoform);
+				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(temp);
+				
+				for(ShortRead shortRead:Statistics.getCompatibleShortReads(isoform, geneSAMRecords)){
+					if(shortRead.isJunctionRead()){
+						float startScaled = scalePosition(shortRead.getFirstExonEnd()+1,listOfIntrons);
+						float endScaled = scalePosition(shortRead.getLastExonBeginning()-1,listOfIntrons);				
+						
+						boolean found =false;
+						for(Junction junction:iJunctionList){
+							if(junction.getLeftScaled()==startScaled && junction.getRightScaled()==endScaled){
+								junction.incrementCount(1);
+								found=true;
+							}					
+						}
+						if(!found){
+							iJunctionList.add(new Junction(startScaled,endScaled,1));
+						}		
+					}	
+				}
+				for(Junction junction:iJunctionList){
+					junction.setWeight(Statistics.getWeightOfJunction(junction));
+				}
+			}
+			protected abstract float scaleLength(float length,ArrayList<Interval> listOfIntrons);
+			protected abstract float scalePosition(float position,ArrayList<Interval> listOfIntrons);
+			
+	//		protected boolean isARepeat(Rectangle_Weighted inputRect){
+	//			for(Rectangle_Weighted rect:weightedIsoforms){
+	//				float lengthScaled= map(exon.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
+			//float startScaled = scaleAbsoluteCoord_Collapsed(exon.getStart(), listOfIntrons);
+	//			}
+	//		}
+		}
+	private class Uncollapsed_Weighted extends Weighted{
+		
+		public Uncollapsed_Weighted() {
+			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
+			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
+			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
+			referenceLabels= new ArrayList<Label>();
+			errorBars = new ArrayList<ErrorBar>();
+			junctionList = new ArrayList<Junction>();
+		}
+	
+		@Override
+		protected float scaleLength(float length,
+				ArrayList<Interval> listOfIntrons) {
+			return map(length,0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+		}
+	
+		@Override
+		protected float scalePosition(float position,
+				ArrayList<Interval> listOfIntrons) {
+			return scaleAbsoluteCoord_Uncollapsed(position);
+		}
+	}
+	private class Collapsed_Weighted extends Weighted{
+		public Collapsed_Weighted() {
+			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
+			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
+			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
+			referenceLabels= new ArrayList<Label>();
+			errorBars = new ArrayList<ErrorBar>();
+			junctionList = new ArrayList<Junction>();
+		}
+		@Override
+		protected float scaleLength(float length,
+				ArrayList<Interval> listOfIntrons) {
+			int sum=0;
+			for(Interval interval:listOfIntrons){
+				sum+=interval.getLength();
+			}	
+			return map(length,0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
+		}
+	
+		@Override
+		protected float scalePosition(float position,
+				ArrayList<Interval> listOfIntrons) {
+			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
+		}
+	}
+	private abstract class Unweighted{
+			protected ArrayList<Rectangle_Unweighted> unweightedIsoforms;
+			protected ArrayList<Rectangle_Unweighted> unweightedConstitutiveRectangle;
+			protected ArrayList<Line> spliceLines;
+			protected ArrayList<Label> unweightedIsoformLabels;
+			
+			public synchronized void draw() {
+				drawUnweightedIsoforms();
+			}
+			public synchronized void clear() {
+				unweightedConstitutiveRectangle.clear();	
+			}
+			public synchronized void flip() {
+				for(Rectangle_Unweighted rectangle: unweightedIsoforms){
+					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+				}
+				for(Line line:spliceLines){	
+					line.setXCoordStart(reverse(line.getXCoordStart()));
+					line.setXCoordEnd(reverse(line.getXCoordEnd()));
+				}
+				for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){	
+					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+				}
+				
+			}
+			private void drawUnweightedIsoforms() {
+				drawSplicingLines();
+				synchronized (unweightedIsoforms) {
+					for(Rectangle_Unweighted rectangle:unweightedIsoforms){
+						fill(rectangle.getColor());
+						rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());
+					}
+				}
+				fill(0);
+				drawUnweightedIsoformLabels();
+				drawUnweightedConstitutiveRects();
+				
+			}
+			private void drawSplicingLines() {
+				if(splicingLinesVisible){
+					synchronized (spliceLines) {
+						stroke(0);
+						for(Line line:spliceLines){
+							line(line.getXCoordStart(),line.getYCoordStart(),line.getXCoordEnd(),line.getYCoordEnd());
+						}
+					}
+						
+				}
+				
+			}
+			private void drawUnweightedConstitutiveRects() {
+				synchronized (unweightedConstitutiveRectangle) {
+					
+					for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
+						fill(rectangle.getColor());
+						rect(rectangle.getScaledXCoord(), rectangle.getScaledYCoord(), rectangle.getScaledLength(), rectangle.getScaledHeight());	
+					}
+					fill(0);
+				
+				}
+				
+			}
+			private void drawUnweightedIsoformLabels() {
+				synchronized (unweightedIsoformLabels) {
+					for(Label label: unweightedIsoformLabels){
+						text(label.getText(),label.getXScaled(),label.getYScaled());
+					}	
+				}
+			}
+	public synchronized void loadNewArrayOfUnweightedIsoforms(Collection<MRNA> isoforms){
+				
+				//Clear Existing Arrays
+				unweightedIsoforms.clear(); 
+				spliceLines.clear();
+				unweightedIsoformLabels.clear(); 
+				unweightedConstitutiveRectangle.clear(); 
+				
+				ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
+				
+				
+				//Get a list of the large consitutitive exons
+				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
+				
+				//Plot the shortened isoforms
+				int yPosition=graphYEnd;
+				
+				for(MRNA mrna : isoforms){
+					ArrayList<Rectangle_Unweighted> sortedRectangles = new ArrayList<Rectangle_Unweighted>();
+					
+					// Exons
+					int cdsColor = color(150);
+					int exonColor = color(40);
+					for(Exon exon:mrna.getExons().values()){
+						float scaledLength= scaleLength(exon.getLength(),listOfIntrons);
+						float scaledStart = scalePosition(exon.getStart(), listOfIntrons);
+						 
+						Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
+																				yPosition+5,
+																				scaledLength, 
+																				10,
+																				exon.getStart(),
+																				exon.getEnd(),
+																				mrna.getId(),
+																				exonColor);
+						unweightedIsoforms.add(temp);
+						sortedRectangles.add(temp);
+						
+	
+						//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
+						for(Interval interval :listOfConstitutiveIntervals){
+							if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
+								int color = color(0,0,255);
+								unweightedConstitutiveRectangle.add(
+										new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
+																	yPosition+5, 
+																	scaleLength(interval.getLength(),listOfIntrons), 
+																	10, 
+																	interval.getStartCoord(), 
+																	interval.getEndCoord(), 
+																	mrna.getId(), 
+																	color));
+							}
+						}
+						
+					}
+					
+					//Load CDS
+					for(CDS cds :mrna.getCDS().values()){
+						float scaledLength= scaleLength(cds.getLength(),listOfIntrons);
+						float scaledStart = scalePosition(cds.getStart(),listOfIntrons);
+						
+						Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
+																				yPosition, 
+																				scaledLength, 
+																				20,
+																				cds.getStart(),
+																				cds.getEnd(),
+																				mrna.getId(),
+																				cdsColor);
+						unweightedIsoforms.add(temp);
+						
+						//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
+						for(Interval interval :listOfConstitutiveIntervals){
+							if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
+								int color = color(0,0,255);
+								unweightedConstitutiveRectangle.add(
+										new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
+																	yPosition, 
+																	scaleLength(interval.getLength(),listOfIntrons), 
+																	20, 
+																	interval.getStartCoord(), 
+																	interval.getEndCoord(), 
+																	mrna.getId(), 
+																	color));
+							}
+						}
+					}
+					
+					//Make Splice lines
+					spliceLines.addAll(getSpliceLines(sortedRectangles, yPosition));
+					
+					
+					//Load Start and Stop Codons
+					int color = color(0,255,0, 100);//Green
+					if(mrna.getStartCodon()!=null){
+						float scaledLength= scaleLength(mrna.getStartCodon().getLength(),listOfIntrons);
+						float scaledStart = scalePosition(mrna.getStartCodon().getStart(),listOfIntrons);
+						
+						unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
+																			yPosition,
+																			scaledLength, 
+																			20,
+																			mrna.getStartCodon().getStart(),
+																			mrna.getStartCodon().getEnd(),
+																			mrna.getId(),
+																			color));	
+					}
+					if(mrna.getStopCodon()!=null){
+						float scaledLength= scaleLength(mrna.getStopCodon().getLength(),listOfIntrons);
+						float scaledStart = scalePosition(mrna.getStopCodon().getStart(),listOfIntrons);
+						unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
+																			yPosition,
+																			scaledLength, 
+																			20,
+																			mrna.getStopCodon().getStart(),
+																			mrna.getStopCodon().getEnd(),
+																			mrna.getId(),
+																			color));
+					}
+					unweightedIsoformLabels.add(new Label(mrna.getId(), 10, yPosition+20));
+					yPosition+=30;
+				}
+				if(!isCodingStrand){
+					if(unweightedIsoforms!=null){
+						for(Rectangle_Unweighted rectangle:unweightedIsoforms){
+							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+						}	
+					}
+					if(spliceLines!=null){
+						for(Line line:spliceLines){	
+							line.setXCoordStart(reverse(line.getXCoordStart()));
+							line.setXCoordEnd(reverse(line.getXCoordEnd()));
+						}	
+					}
+					if(unweightedConstitutiveRectangle!=null){
+						for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
+							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+						}
+					}	
+				}
+				
+				
+			}
+			protected abstract float scaleLength(float length,ArrayList<Interval> listOfIntrons);
+			protected abstract float scalePosition(float position,ArrayList<Interval> listOfIntrons);
+		}
+	private class Collapsed_Unweighted extends Unweighted{
+	
+		public Collapsed_Unweighted(){
+			unweightedConstitutiveRectangle = new ArrayList<Rectangle_Unweighted>();
+			spliceLines=new ArrayList<Line>();
+			unweightedIsoforms=new ArrayList<Rectangle_Unweighted>();
+			unweightedIsoformLabels = new ArrayList<Label>();
+		}
+		
+		
+	
+		@Override
+		protected float scaleLength(float length,
+				ArrayList<Interval> listOfIntrons) {
+			int sum=0;
+			for(Interval interval:listOfIntrons){
+				sum+=interval.getLength();
+			}
+			return map(length,0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
+		}
+	
+		@Override
+		protected float scalePosition(float position,
+				ArrayList<Interval> listOfIntrons) {
+			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
+		}
+	}
+	private class Uncollapsed_Unweighted extends Unweighted{
+		
+		public Uncollapsed_Unweighted(){
+			spliceLines = new ArrayList<Line>();
+			unweightedIsoforms=new ArrayList<Rectangle_Unweighted>();
+			unweightedConstitutiveRectangle=new ArrayList<Rectangle_Unweighted>();
+			unweightedIsoformLabels = new ArrayList<Label>();
+			
+		}
+			
+		@Override
+		protected float scaleLength(float length,
+				ArrayList<Interval> listOfIntrons) {
+			return map(length,0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
+		}
+		@Override
+		protected float scalePosition(float position,
+				ArrayList<Interval> listOfIntrons) {
+			return scaleAbsoluteCoord_Uncollapsed(position);
+		}
+	}
 	private Collapsed_Weighted collapsed_Weighted = new Collapsed_Weighted();
 	private Collapsed_Unweighted collapsed_Unweighted = new Collapsed_Unweighted();
 	private Uncollapsed_Weighted uncollapsed_Weighted = new Uncollapsed_Weighted();
@@ -351,7 +1118,7 @@ public class ProcessingApplet extends PApplet{
 				break;
 			}
 			case UNCOLLAPSED_WEIGHTED:{ 
-				uncollapsed_Weighted.loadUncollapsed_NewArrayOfWeightedIsoforms(isoforms);
+				uncollapsed_Weighted.loadNewArrayOfWeightedIsoforms(isoforms);
 																			
 				break;
 			}
@@ -360,7 +1127,7 @@ public class ProcessingApplet extends PApplet{
 				break;
 			}
 			case COLLAPSED_WEIGHTED:{
-				collapsed_Weighted.loadCollapsed_WeightedIsoforms(isoforms);
+				collapsed_Weighted.loadNewArrayOfWeightedIsoforms(isoforms);
 				break;
 			}
 		}
@@ -432,7 +1199,6 @@ public class ProcessingApplet extends PApplet{
 		}
 	}
 	public void loadCollapsed_ShortReads(ArrayList<SAMRecord> iSamRecords){
-		//FIXME
 		HashMap<Integer, Integer> absoluteDensityMap = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, geneSAMRecords);
 		//TODO - NOt sure if this is okay (currentlyViewingIsoforms) 
 		//It would mean that the gene must be loaded before the bam
@@ -518,7 +1284,11 @@ public class ProcessingApplet extends PApplet{
 		//In the end, a pixel represents the average number of short reads that cross it
 		float maxAverage =0;
 		for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
-			int mappedPixel = (int) scaleAbsoluteCoord_Collapsed(i,absoluteStartOfGene,absoluteEndOfGene,graphXStart,graphXEnd, listOfIntrons);
+			int mappedPixel = (int) scaleAbsoluteCoord_Collapsed(i,listOfIntrons);
+			if(mappedPixel<graphXStart||mappedPixel>graphXEnd){
+				System.err.println(mappedPixel);
+				return;
+			}
 			//System.out.println(i + "-->" + mappedPixel);// +"---Abs" + iAbsoluteDensity.get(i));
 			if(prevPixel==-1){
 				frameAbsoluteStart=i;
@@ -607,10 +1377,7 @@ public class ProcessingApplet extends PApplet{
 			case UNCOLLAPSED_UNWEIGHTED: loadShortReads(newShortReads); break;//Do Nothing
 			case UNCOLLAPSED_WEIGHTED: uncollapsed_Weighted.animatedLoad(this,newShortReads,isoform);break;
 			case COLLAPSED_UNWEIGHTED: loadShortReads(newShortReads); break;//Do Nothing
-			case COLLAPSED_WEIGHTED:{
-				//TODO
-				break;
-			}
+			case COLLAPSED_WEIGHTED:collapsed_Weighted.animatedLoad(this, newShortReads, isoform);break;
 		}		
 		
 		
@@ -624,15 +1391,15 @@ public class ProcessingApplet extends PApplet{
 		Statistics.setOverhang(overhang);
 		if(method==0){
 			gridLinesVisible=true;
-			Statistics.setMethod(Statistics.Method.METHOD0);
+			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);
 		}else if(method==1){
 			gridLinesVisible=true;
-			Statistics.setMethod(Statistics.Method.METHOD1);
+			Statistics.setMethod(Statistics.Method.RPK);
 		}else if(method==2){
 			gridLinesVisible=false;
-			Statistics.setMethod(Statistics.Method.METHOD2);
+			Statistics.setMethod(Statistics.Method.RPKM);
 		}else{
-			Statistics.setMethod(Statistics.Method.METHOD0);
+			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);
 		}
 	}
 	public float getRPKM(ArrayList<SAMRecord> samRecords,int totalNumberOfReads) {
@@ -690,34 +1457,7 @@ public class ProcessingApplet extends PApplet{
 		}
 		return spliceLineArray;		
 	}
-	/**
-	 * Load junction list.
-	 * 
-	 * @param isoform the isoform you want to have junction reads calculated for
-	 */
-	private void fillJunctionList(ArrayList<Junction> iJunctionList,MRNA isoform){
-		iJunctionList.clear();
-		for(ShortRead shortRead:Statistics.getCompatibleShortReads(isoform, geneSAMRecords)){
-			if(shortRead.isJunctionRead()){
-				float startScaled = scaleAbsoluteCoord_Uncollapsed(shortRead.getFirstExonEnd()+1);
-				float endScaled = scaleAbsoluteCoord_Uncollapsed(shortRead.getLastExonBeginning()-1);				
-				
-				boolean found =false;
-				for(Junction junction:iJunctionList){
-					if(junction.getLeftScaled()==startScaled && junction.getRightScaled()==endScaled){
-						junction.incrementCount(1);
-						found=true;
-					}					
-				}
-				if(!found){
-					iJunctionList.add(new Junction(startScaled,endScaled,1));
-				}		
-			}	
-		}
-		for(Junction junction:iJunctionList){
-			junction.setWeight(Statistics.getWeightOfJunction(junction));
-		}
-	}
+	
 	//This is how you will do zooming
 	private void drawWindow(int startCoord, int endCoord){
 		
@@ -833,7 +1573,7 @@ public class ProcessingApplet extends PApplet{
 		return map(inCoord,absoluteStartOfGene,absoluteEndOfGene,
 				graphXStart,graphXEnd);
 	}
-	private float scaleAbsoluteCoord_Collapsed(float value,float low1,float high1,float low2,float high2,ArrayList<Interval> intervalsToExclude){
+	private float scaleAbsoluteCoord_Collapsed(float value,ArrayList<Interval> intervalsToExclude){
 		//Find the sum of the lengths of the introns that are less than the position.
 		int sum=0;
 		int totalSum=0;
@@ -857,16 +1597,16 @@ public class ProcessingApplet extends PApplet{
 				200*((value-interval.getStartCoord())/interval.getLength());//Relative position to the intron
 			}
 		}
-		float newHigh1=(high1-totalSum)+(intervalsToExclude.size()*200);
+		float newHigh1=(absoluteEndOfGene-totalSum)+(intervalsToExclude.size()*200);
 		
 		
 		if(valueIsInIntron){
 			float newValue = (relativePosition-sum)+(count*200);
-			return map(newValue,low1,newHigh1,low2,high2);
+			return map(newValue,absoluteStartOfGene,newHigh1,graphXStart,graphXEnd);
 		}else{
 			//All the regions longer than 500 are shortened to 200
 			float newValue = (value-sum)+(count*200);
-			return map(newValue,low1,newHigh1,low2,high2);
+			return map(newValue,absoluteStartOfGene,newHigh1,graphXStart,graphXEnd);
 		}
 		
 		
@@ -890,7 +1630,7 @@ public class ProcessingApplet extends PApplet{
 			case UNCOLLAPSED_UNWEIGHTED:return null; //TODO
 			case UNCOLLAPSED_WEIGHTED: return uncollapsed_Weighted.getRectFromCoord(mouseX,mouseY);
 			case COLLAPSED_UNWEIGHTED: return null;//TODO
-			case COLLAPSED_WEIGHTED: return null;//TODO
+			case COLLAPSED_WEIGHTED: return collapsed_Weighted.getRectFromCoord(mouseX,mouseY);
 			default:return null;
 		}		
 	}
@@ -942,983 +1682,6 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 		return listOfIntrons;
-	}
-	private abstract class Weighted{
-		protected ArrayList<Junction> junctionList;
-		protected ArrayList<Rectangle_Weighted> weightedIsoforms;
-		protected ArrayList<Rectangle_Weighted> weightedConstitutiveRectangles;
-		protected ArrayList<ErrorBar> errorBars;
-		protected ArrayList<Rectangle_Unweighted>referenceIsoforms;
-		protected ArrayList<Label> referenceLabels;
-		
-		public void animatedLoad(ProcessingApplet pApplet,ArrayList<SAMRecord> newShortReads, MRNA isoform) {
-			junctionList.clear();
-			errorBars.clear();
-			weightedConstitutiveRectangles.clear();
-			loadShortReads(newShortReads);
-			ArrayList<ShortRead> compatibleShortReads = Statistics.getCompatibleShortReads(isoform, newShortReads);
-			ArrayList<Rectangle_Weighted> exonsOnly= new ArrayList<Rectangle_Weighted>();
-			synchronized (weightedIsoforms) {
-				String id="";
-				for(Rectangle_Weighted rect:weightedIsoforms){
-					if(rect.getScaledHeight()==10){
-						exonsOnly.add(rect);
-					}
-					if(id==""){
-						id=rect.getIsoformID();
-					}else if(id!=rect.getIsoformID()){
-						ArrayList<MRNA> temp = new ArrayList<MRNA>();
-						temp.add(isoform);
-						System.err.println("An attempt was made to animate multiple isoforms at once");
-						return;
-					}
-				}
-				weightedIsoforms=exonsOnly;
-			}
-
-			if(currentAnimation!=null && currentAnimation.isAlive()){
-				currentAnimation.interrupt();
-			}else{
-				currentAnimation = new Thread(new UpdateAnimation(pApplet,isoform,compatibleShortReads,weightedIsoforms));
-				currentAnimation.start();	
-			}	
-			
-		}
-
-		public synchronized void clear() {
-			weightedConstitutiveRectangles.clear();
-			
-		}
-
-		public synchronized void draw(){
-			drawWeightedIsoforms();
-		}
-
-		private void drawErrorBars(){
-					if(errorBars!=null){
-						synchronized (errorBars) {
-							for(ErrorBar error:errorBars){
-								double SD = error.getStandardDeviation()*yScale;
-								float newScaledYPosition = graphYStart-(yScale*error.getWeight());
-								int start = (int) (newScaledYPosition-SD);
-								int end = (int) (newScaledYPosition+SD);
-								line(error.getScaledXPosition(),start,error.getScaledXPosition(),end);
-		//						strokeWeight(10);
-		//						point(error.getScaledXPosition(),newScaledYPosition);
-		//						strokeWeight(1);
-							}	
-						}
-					}
-				}
-
-		/**
-		 * Draws a grid for the weighted Isoforms
-		 */
-		private void drawGrid() {
-			if(gridLinesVisible){
-				line(graphXStart,graphYStart,graphXEnd,graphYStart);
-				line(graphXStart,graphYStart,graphXStart,50);
-				int count =0;
-				stroke(150);
-				for(int i =graphYStart;i>graphYEnd; i-=(yScale)){
-					if(count%5==0){
-						text(""+count,graphXStart-20,i+5);
-						line(graphXStart,i,graphXEnd,i);
-					}
-					count++;	
-				}
-				stroke(0);	
-			}
-		}
-
-		private void drawHoverInfo(){
-			Rectangle_Weighted rect =  getRectUnderMouse();
-			if(rect!=null){
-				fill(200,200);
-				rect(mouseX,mouseY-20,250,120);
-				fill(0);
-				MRNA isoform = hashOfIsoforms.get(rect.getIsoformID());
-				text("Isoform:" + rect.getIsoformID()+
-					"\nStart:\t"+rect.getAbsoluteStart() + 
-					"\nEnd: \t " + rect.getAbsoluteEnd()+
-					"\nLength:\t" + rect.getAbsoluteLength() +
-					"\n#Body Reads:\t" +  Statistics.getNumberOfBodyReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), geneSAMRecords) + 
-					"\n#Junction Reads:\t" + Statistics.getNumberOfJunctionReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), geneSAMRecords)
-					,mouseX+10,mouseY);
-					
-			}	
-		}
-
-		private void drawJunctionLines() {
-					if(junctionList!=null){
-						synchronized (junctionList) {
-							stroke(255,0,0);
-							strokeWeight(3);
-							for(Junction junction:junctionList){
-								int yPos=graphYStart;
-		//						for(int i=0;i<junction.getHits();i++){
-		//							line(junction.getLeftScaled(),yPos,junction.getRightScaled(),yPos);
-		//							yPos-=yScale;
-		//						}
-								int height = (int) (yPos-(yScale*junction.getWeight()));
-								line(junction.getLeftScaled(),height,junction.getRightScaled(),height);
-								text(junction.getWeight(),junction.getRightScaled(),(int)height);
-							}
-							strokeWeight(1);
-							stroke(1);
-						}
-					}
-					
-					
-				}
-
-		/**
-		 * Draws a label that describes the height at each xCoordinate.
-		 */
-		//FIXME should contain info about both sets of short read
-		private void drawLabelForHeight(){
-			if(shortReads_Set_U1!=null){
-				if(mouseX>=graphXStart && mouseX<=graphXEnd){
-					text("Average Height "+ getShortReadDensityHeightAt(mouseX) + " @ "+ 
-							"\n"+getAbsoluteCoordinates(mouseX), 350, 650);
-					line(mouseX,shortReadPlotYStart,400,620);
-				}	
-			}
-			
-		}
-
-		/**
-		 * Draw the labels for the reference isoforms.
-		 */
-		private void drawLabelsForReference() {
-			
-			if(referenceLabels!=null){
-				synchronized (referenceLabels) {
-					for(Label label:referenceLabels){	
-						text(label.getText(),label.getXScaled(),label.getYScaled());
-					}	
-				}
-					
-			}else{
-				System.err.println("Reference Labels are Null!");
-			}
-			
-			
-		}
-
-		/**
-		 * Draw the reference isoforms and the labels
-		 */
-		private void drawReferenceIsoform() {
-			if(referenceIsoforms!=null){
-				synchronized (referenceIsoforms) {
-					for(Rectangle_Unweighted rectangle:referenceIsoforms){
-						fill(rectangle.getColor());
-						rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());	
-					}
-				}
-				fill(0);
-				drawLabelsForReference();		
-			}
-			
-		}
-
-		private void drawWeightedConstitutiveRectangles(){
-			if(weightedConstitutiveRectangles!=null){
-				synchronized (weightedConstitutiveRectangles) {
-						for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){
-							fill(rectangle.getColor());
-							float newScaledYCoord = graphYStart-(yScale*rectangle.getWeight()); 
-								//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
-							//Because the rectangle is drawn from the corner, subtract half its height;
-							newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
-							colorMode(HSB, 450,100,50);
-							rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
-							colorMode(RGB,255);
-						}
-						fill(0);
-				}
-			}
-		}
-
-		/**
-		 * Draw the weighted isoforms
-		 *  
-		 * This function iterates through the list weightedIsoforms to draw them at the correct height.
-		 * It also draws other components such as the grid, errorbars, reference isoforms, and hover 
-		 * information
-		 */
-		private void drawWeightedIsoforms() {
-			drawGrid();
-			synchronized (weightedIsoforms) {
-				
-				for(Rectangle_Weighted rectangle:weightedIsoforms){
-					
-					fill(rectangle.getColor());
-					float newScaledYCoord = graphYStart-(yScale*rectangle.getWeight()); 
-						//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
-					//Because the rectangle is drawn from the corner, subtract half its height;
-					newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
-					colorMode(HSB, 450,100,50);
-					rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
-					colorMode(RGB,255);
-				}
-				
-			}
-			fill(0);
-			drawErrorBars();
-			drawReferenceIsoform();
-			drawWeightedConstitutiveRectangles();
-			drawJunctionLines();
-			drawLabelForHeight();
-			drawHoverInfo();
-		}
-
-		public synchronized void flip(){
-			for(Rectangle_Weighted rectangle:weightedIsoforms){
-				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-			}
-			for(ErrorBar errorBar:errorBars){
-				errorBar.setScaledXCoord(reverse(errorBar.getScaledXPosition()));
-			}
-			for(Rectangle_Unweighted rectangle:referenceIsoforms){
-				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-			}
-			for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){	
-				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-			}
-			for(Junction junction:junctionList){
-				junction.setLeftScaled(reverse(junction.getLeftScaled()));
-				junction.setRightScaled(reverse(junction.getRightScaled()));
-			}
-		}
-
-		public Rectangle_Weighted getRectFromCoord(int mouseX, int mouseY) {
-			synchronized (weightedIsoforms) {
-				//Iterate through the array and checks to see if the mouse is over it
-				for(Rectangle_Weighted rect:weightedIsoforms){
-					if(	mouseX>rect.getScaledXCoord() &&
-						mouseX<rect.getScaledXCoord()+rect.getScaledLength() &&
-						mouseY>(graphYStart-rect.getWeight()*yScale-rect.getScaledHeight()/2) && 
-						mouseY<(graphYStart-rect.getWeight()*yScale+rect.getScaledHeight()/2) &&
-						rect.getScaledHeight()==10){
-						return rect;
-					}
-				}	
-			}
-			return null;	
-		}
-	}
-	private class Uncollapsed_Weighted extends Weighted{
-		
-		public Uncollapsed_Weighted() {
-			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
-			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
-			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
-			referenceLabels= new ArrayList<Label>();
-			errorBars = new ArrayList<ErrorBar>();
-			junctionList = new ArrayList<Junction>();
-		}
-		
-		/**
-		 * Loads information for positioning Weighted isoforms into 
-		 * global arrays. These weighted isoforms will be drawn when the draw function is called.
-		 * 
-		 * @param listOfMRNA is a list of MRNA
-		 * @param iAbsoluteStartOfGene is the genomic coodinate of the start of the gene (inclusive)
-		 * @param iAbsoluteLengthOfGene is the genomic length of the gene (inclusive)
-		 * @param strand is the strand of the gene (false means noncoding)
-		 */
-		public synchronized void loadUncollapsed_NewArrayOfWeightedIsoforms(Collection<MRNA> listOfMRNA){
-			
-			//Under the condition that the loadShortReads function has already been called
-			if(geneSAMRecords!=null){
-				//Make new arrays
-				weightedIsoforms.clear(); 
-				referenceIsoforms.clear();
-				referenceLabels.clear();
-				errorBars.clear();
-				weightedConstitutiveRectangles.clear();
-				junctionList.clear();
-				
-				ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
-				
-				int yRefStart=30; // Start of where the reference labels go
-				//For each isoform
-				for(MRNA mrna:listOfMRNA){
-					hashOfIsoforms.put(mrna.getId(),mrna);
-					int cdsColor = color(150);
-					int exonColor = color(40);
-					if(listOfMRNA.size()>1){	
-						colorMode(HSB, 450,100,50);
-						cdsColor = color(yRefStart,100,100);
-						exonColor = color(yRefStart,100,100);
-						colorMode(RGB,255);
-					}else{
-						fillJunctionList(junctionList,mrna);
-					}
-					
-					ArrayList<ShortRead>compatibleShortReads = Statistics.getCompatibleShortReads(mrna, geneSAMRecords);
-					referenceLabels.add(new Label(mrna.getId(), 10, yRefStart+10));
-					
-					//For each exon
-					int exonCountPosition=0;
-					for(Exon exon :mrna.getExons().values()){
-						//Find the average of the region in mention
-						
-						boolean endExon = false;
-						if(exonCountPosition==0 || exonCountPosition==mrna.getExons().values().size()-1){
-							endExon=true;
-						}
-						float average = Statistics.getWeightOfExon(exon,compatibleShortReads,endExon);
-						exonCountPosition++;
-						
-						//Scale the length and start
-						float lengthScaled=map(exon.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
-						float startScaled; 
-						startScaled = scaleAbsoluteCoord_Uncollapsed(exon.getStart()); 
-						
-						Rectangle_Weighted temp = new Rectangle_Weighted(startScaled, lengthScaled,10,
-								exon.getStart(),exon.getEnd(),mrna.getId(),average,exonColor);
-						weightedIsoforms.add(temp);
-						errorBars.add(new ErrorBar(average,
-								Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleShortReads),
-								temp,mrna.getId(),(startScaled+lengthScaled/2)));
-						
-						//Fill in array that draws the reference isoforms
-						Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart, lengthScaled,10,exon.getStart(),
-								exon.getEnd(),mrna.getId(),exonColor);
-						referenceIsoforms.add(temp2);
-						
-
-						//Fill in array that draws the scaled constitutive lines
-						//The difference here is that that the first YStartPosition represents the absolute height
-						//It still needs to be scaled (look at drawWeightedConstitutiveLines)
-						for(Interval interval :listOfConstitutiveIntervals){
-							if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
-								int color = color(0,0,255);
-								weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scaleAbsoluteCoord_Uncollapsed(interval.getStartCoord()), 
-																							map(interval.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart), 
-																							10, 
-																							interval.getStartCoord(), 
-																							interval.getEndCoord(), 
-																							mrna.getId(), 
-																							average, 
-																							color));	
-							}
-						}
-					}
-					//For each CDS
-					for(CDS cds:mrna.getCDS().values()){
-						float lengthScaled=map(cds.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
-						float startScaled;
-						startScaled = scaleAbsoluteCoord_Uncollapsed(cds.getStart());
-						
-						//Get the rectangle that is nearest to the xCoordinate who has the same MRNA
-						//to get the appropriate height
-						Rectangle_Weighted exon_Rect=getRectangleNearestToXCoord(weightedIsoforms,mrna.getId(),startScaled);
-						float weight = exon_Rect.getWeight();
-						Rectangle_Weighted temp = new Rectangle_Weighted(startScaled,lengthScaled,20,
-								cds.getStart(),cds.getEnd(),mrna.getId(),weight,cdsColor);
-						weightedIsoforms.add(temp);
-						Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart-5, lengthScaled,20,
-								cds.getStart(),cds.getEnd(),mrna.getId(),cdsColor);
-						referenceIsoforms.add(temp2);
-						
-					}
-					yRefStart+=20;
-				}
-				if(!isCodingStrand){
-					if(weightedIsoforms!=null){
-						for(Rectangle_Weighted rectangle:weightedIsoforms){
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}
-					}
-					if(errorBars!=null){
-						for(ErrorBar errorBar:errorBars){
-							errorBar.setScaledXCoord(reverse(errorBar.getScaledXPosition()));
-						}
-					}
-					if(referenceIsoforms!=null){
-						for(Rectangle_Unweighted rectangle:referenceIsoforms){
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}
-					}
-					if(weightedConstitutiveRectangles!=null){
-						for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){	
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}
-					}
-					if(junctionList!=null){
-						for(Junction junction:junctionList){
-							junction.setLeftScaled(reverse(junction.getLeftScaled()));
-							junction.setRightScaled(reverse(junction.getRightScaled()));
-						}
-					}	
-				}
-			}else{
-				System.err.println("A call was made to loadWeightedIsoforms but there was no shortReadData");
-			}
-		}
-	}
-	private class Collapsed_Weighted extends Weighted{
-		public Collapsed_Weighted() {
-			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
-			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
-			referenceIsoforms = new ArrayList<Rectangle_Unweighted>();
-			referenceLabels= new ArrayList<Label>();
-			errorBars = new ArrayList<ErrorBar>();
-			junctionList = new ArrayList<Junction>();
-		}
-		
-		public synchronized void loadCollapsed_WeightedIsoforms(Collection<MRNA> listOfMRNA){
-
-			//Under the condition that the loadShortReads function has already been called
-			if(geneSAMRecords!=null){
-				//Make new arrays
-				weightedIsoforms.clear(); 
-				referenceIsoforms.clear();
-				referenceLabels.clear();
-				errorBars.clear();
-				weightedConstitutiveRectangles.clear();
-				junctionList.clear();
-				
-				ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
-				
-				//Get a list of the large consitutitive exons
-				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(listOfMRNA);
-				int sum = 0; //Keep track of the sum of these exons for scaling the length
-				for(Interval interval:listOfIntrons){
-					sum+=interval.getLength();
-				}
-				
-				
-				int yRefStart=30; // Start of where the reference labels go
-				//For each isoform
-				for(MRNA mrna:listOfMRNA){
-					hashOfIsoforms.put(mrna.getId(),mrna);
-					int cdsColor = color(150);
-					int exonColor = color(40);
-					if(listOfMRNA.size()>1){	
-						colorMode(HSB, 450,100,50);
-						cdsColor = color(yRefStart,100,100);
-						exonColor = color(yRefStart,100,100);
-						colorMode(RGB,255);
-					}else{
-						fillJunctionList(junctionList,mrna);
-					}
-					
-					ArrayList<ShortRead>compatibleShortReads = Statistics.getCompatibleShortReads(mrna, geneSAMRecords);
-					referenceLabels.add(new Label(mrna.getId(), 10, yRefStart+10));
-					
-					//For each exon
-					int exonCountPosition=0;
-					for(Exon exon :mrna.getExons().values()){
-						//Find the average of the region in mention
-						
-						boolean endExon = false;
-						if(exonCountPosition==0 || exonCountPosition==mrna.getExons().values().size()-1){
-							endExon=true;
-						}
-						float average = Statistics.getWeightOfExon(exon,compatibleShortReads,endExon);
-						exonCountPosition++;
-						
-						//Scale the length and start
-						float lengthScaled= map(exon.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-						float startScaled = scaleAbsoluteCoord_Collapsed(exon.getStart(), absoluteStartOfGene, absoluteEndOfGene, graphXStart,graphXEnd, listOfIntrons); 
-						
-						Rectangle_Weighted temp = new Rectangle_Weighted(startScaled, lengthScaled,10,
-								exon.getStart(),exon.getEnd(),mrna.getId(),average,exonColor);
-						weightedIsoforms.add(temp);
-						errorBars.add(new ErrorBar(average,
-								Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleShortReads),
-								temp,mrna.getId(),(startScaled+lengthScaled/2)));
-						
-						//Fill in array that draws the reference isoforms
-						Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart, lengthScaled,10,exon.getStart(),
-								exon.getEnd(),mrna.getId(),exonColor);
-						referenceIsoforms.add(temp2);
-						
-
-						//Fill in array that draws the scaled constitutive lines
-						//The difference here is that that the first YStartPosition represents the absolute height
-						//It still needs to be scaled (look at drawWeightedConstitutiveLines)
-						for(Interval interval :listOfConstitutiveIntervals){
-							if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
-								int color = color(0,0,255);
-								weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scaleAbsoluteCoord_Uncollapsed(interval.getStartCoord()), 
-																							map(interval.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart), 
-																							10, 
-																							interval.getStartCoord(), 
-																							interval.getEndCoord(), 
-																							mrna.getId(), 
-																							average, 
-																							color));	
-							}
-						}
-					}
-					//For each CDS
-					for(CDS cds:mrna.getCDS().values()){
-						float lengthScaled= map(cds.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-						float startScaled = scaleAbsoluteCoord_Collapsed(cds.getStart(), absoluteStartOfGene, absoluteEndOfGene, graphXStart,graphXEnd, listOfIntrons);
-						
-						//Get the rectangle that is nearest to the xCoordinate who has the same MRNA
-						//to get the appropriate height
-						Rectangle_Weighted exon_Rect=getRectangleNearestToXCoord(weightedIsoforms,mrna.getId(),startScaled);
-						float weight = exon_Rect.getWeight();
-						Rectangle_Weighted temp = new Rectangle_Weighted(startScaled,lengthScaled,20,
-								cds.getStart(),cds.getEnd(),mrna.getId(),weight,cdsColor);
-						weightedIsoforms.add(temp);
-						Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart-5, lengthScaled,20,
-								cds.getStart(),cds.getEnd(),mrna.getId(),cdsColor);
-						referenceIsoforms.add(temp2);
-						
-					}
-					yRefStart+=20;
-				}
-				if(!isCodingStrand){
-					if(weightedIsoforms!=null){
-						for(Rectangle_Weighted rectangle:weightedIsoforms){
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}
-					}
-					if(errorBars!=null){
-						for(ErrorBar errorBar:errorBars){
-							errorBar.setScaledXCoord(reverse(errorBar.getScaledXPosition()));
-						}
-					}
-					if(referenceIsoforms!=null){
-						for(Rectangle_Unweighted rectangle:referenceIsoforms){
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}
-					}
-					if(weightedConstitutiveRectangles!=null){
-						for(Rectangle_Weighted rectangle:weightedConstitutiveRectangles){	
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}
-					}
-					if(junctionList!=null){
-						for(Junction junction:junctionList){
-							junction.setLeftScaled(reverse(junction.getLeftScaled()));
-							junction.setRightScaled(reverse(junction.getRightScaled()));
-						}
-					}	
-				}
-			}else{
-				System.err.println("A call was made to loadWeightedIsoforms but there was no shortReadData");
-			}
-			
-		}
-	}
-	private abstract class Unweighted{
-		protected ArrayList<Rectangle_Unweighted> unweightedIsoforms;
-		protected ArrayList<Rectangle_Unweighted> unweightedConstitutiveRectangle;
-		protected ArrayList<Line> spliceLines;
-		protected ArrayList<Label> unweightedIsoformLabels;
-		
-		public synchronized void draw() {
-			drawUnweightedIsoforms();
-		}
-		public synchronized void clear() {
-			unweightedConstitutiveRectangle.clear();	
-		}
-		public synchronized void flip() {
-			for(Rectangle_Unweighted rectangle: unweightedIsoforms){
-				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-			}
-			for(Line line:spliceLines){	
-				line.setXCoordStart(reverse(line.getXCoordStart()));
-				line.setXCoordEnd(reverse(line.getXCoordEnd()));
-			}
-			for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){	
-				rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-			}
-			
-		}
-		private void drawUnweightedIsoforms() {
-			drawSplicingLines();
-			synchronized (unweightedIsoforms) {
-				for(Rectangle_Unweighted rectangle:unweightedIsoforms){
-					fill(rectangle.getColor());
-					rect(rectangle.getScaledXCoord(),rectangle.getScaledYCoord(),rectangle.getScaledLength(),rectangle.getScaledHeight());
-				}
-			}
-			fill(0);
-			drawUnweightedIsoformLabels();
-			drawUnweightedConstitutiveRects();
-			
-		}
-		private void drawSplicingLines() {
-			if(splicingLinesVisible){
-				synchronized (spliceLines) {
-					stroke(0);
-					for(Line line:spliceLines){
-						line(line.getXCoordStart(),line.getYCoordStart(),line.getXCoordEnd(),line.getYCoordEnd());
-					}
-				}
-					
-			}
-			
-		}
-		private void drawUnweightedConstitutiveRects() {
-			synchronized (unweightedConstitutiveRectangle) {
-				
-				for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
-					fill(rectangle.getColor());
-					rect(rectangle.getScaledXCoord(), rectangle.getScaledYCoord(), rectangle.getScaledLength(), rectangle.getScaledHeight());	
-				}
-				fill(0);
-			
-			}
-			
-		}
-		private void drawUnweightedIsoformLabels() {
-			synchronized (unweightedIsoformLabels) {
-				for(Label label: unweightedIsoformLabels){
-					text(label.getText(),label.getXScaled(),label.getYScaled());
-				}	
-			}
-		}
-	}
-	private class Collapsed_Unweighted extends Unweighted{
-	
-		
-		public Collapsed_Unweighted(){
-			unweightedConstitutiveRectangle = new ArrayList<Rectangle_Unweighted>();
-			spliceLines=new ArrayList<Line>();
-			unweightedIsoforms=new ArrayList<Rectangle_Unweighted>();
-			unweightedIsoformLabels = new ArrayList<Label>();
-		}
-		
-		public synchronized void loadNewArrayOfUnweightedIsoforms(Collection<MRNA> isoforms){
-			
-			//Clear Existing Arrays
-			unweightedIsoforms.clear(); 
-			spliceLines.clear();
-			unweightedIsoformLabels.clear(); 
-			unweightedConstitutiveRectangle.clear(); 
-			
-			ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
-			
-			
-			//Get a list of the large consitutitive exons
-			ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
-			int sum = 0; //Keep track of the sum of these exons for scaling the length
-			for(Interval interval:listOfIntrons){
-				sum+=interval.getLength();
-			}
-			
-			//Plot the shortened isoforms
-			int yPosition=graphYEnd;
-			
-			for(MRNA mrna : isoforms){
-				ArrayList<Rectangle_Unweighted> sortedRectangles = new ArrayList<Rectangle_Unweighted>();
-				
-				// Exons
-				int cdsColor = color(150);
-				int exonColor = color(40);
-				for(Exon exon:mrna.getExons().values()){
-					float scaledLength= map(exon.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-					float scaledStart = scaleAbsoluteCoord_Collapsed(exon.getStart(), absoluteStartOfGene, absoluteEndOfGene, graphXStart,graphXEnd, listOfIntrons);
-					 
-					Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
-																			yPosition+5,
-																			scaledLength, 
-																			10,
-																			exon.getStart(),
-																			exon.getEnd(),
-																			mrna.getId(),
-																			exonColor);
-					unweightedIsoforms.add(temp);
-					sortedRectangles.add(temp);
-					
-
-					//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
-					for(Interval interval :listOfConstitutiveIntervals){
-						if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
-							int color = color(0,0,255);
-							unweightedConstitutiveRectangle.add(
-									new Rectangle_Unweighted(	scaleAbsoluteCoord_Collapsed(interval.getStartCoord(),
-																							absoluteStartOfGene,
-																							absoluteEndOfGene,
-																							graphXStart,
-																							graphXEnd,
-																							listOfIntrons),
-																yPosition+5, 
-																map(interval.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart), 
-																10, 
-																interval.getStartCoord(), 
-																interval.getEndCoord(), 
-																mrna.getId(), 
-																color));
-						}
-					}
-					
-				}
-				
-				//Load CDS
-				for(CDS cds :mrna.getCDS().values()){
-					float scaledLength= map(cds.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-					float scaledStart = scaleAbsoluteCoord_Collapsed(cds.getStart(), absoluteStartOfGene, absoluteEndOfGene, graphXStart,graphXEnd, listOfIntrons);
-					
-					Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
-																			yPosition, 
-																			scaledLength, 
-																			20,
-																			cds.getStart(),
-																			cds.getEnd(),
-																			mrna.getId(),
-																			cdsColor);
-					unweightedIsoforms.add(temp);
-					
-					//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
-					for(Interval interval :listOfConstitutiveIntervals){
-						if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
-							int color = color(0,0,255);
-							unweightedConstitutiveRectangle.add(
-									new Rectangle_Unweighted(	scaleAbsoluteCoord_Collapsed(interval.getStartCoord(),
-																							absoluteStartOfGene,
-																							absoluteEndOfGene,
-																							graphXStart,
-																							graphXEnd,
-																							listOfIntrons),
-																yPosition, 
-																map(interval.getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart), 
-																20, 
-																interval.getStartCoord(), 
-																interval.getEndCoord(), 
-																mrna.getId(), 
-																color));
-						}
-					}
-				}
-				
-				//Make Splice lines
-				spliceLines.addAll(getSpliceLines(sortedRectangles, yPosition));
-				
-				
-				//Load Start and Stop Codons
-				int color = color(0,255,0, 100);//Green
-				if(mrna.getStartCodon()!=null){
-					float scaledLength= map(mrna.getStartCodon().getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-					float scaledStart = scaleAbsoluteCoord_Collapsed(mrna.getStartCodon().getStart(), absoluteStartOfGene, absoluteEndOfGene, graphXStart,graphXEnd, listOfIntrons);
-					
-					unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
-																				yPosition,
-																				scaledLength, 
-																				20,
-																				mrna.getStartCodon().getStart(),
-																				mrna.getStartCodon().getEnd(),
-																				mrna.getId(),
-																				color));	
-				}
-				if(mrna.getStopCodon()!=null){
-					float scaledLength= map(mrna.getStopCodon().getLength(),0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
-					float scaledStart = scaleAbsoluteCoord_Collapsed(mrna.getStopCodon().getStart(), absoluteStartOfGene, absoluteEndOfGene, graphXStart,graphXEnd, listOfIntrons);
-					unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
-																				yPosition,
-																				scaledLength, 
-																				20,
-																				mrna.getStopCodon().getStart(),
-																				mrna.getStopCodon().getEnd(),
-																				mrna.getId(),
-																				color));
-				}
-				unweightedIsoformLabels.add(new Label(mrna.getId(), 10, yPosition+20));
-				yPosition+=30;
-			}
-			if(!isCodingStrand){
-				if(unweightedIsoforms!=null){
-					for(Rectangle_Unweighted rectangle:unweightedIsoforms){
-						rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-					}	
-				}
-				if(spliceLines!=null){
-					for(Line line:spliceLines){	
-						line.setXCoordStart(reverse(line.getXCoordStart()));
-						line.setXCoordEnd(reverse(line.getXCoordEnd()));
-					}	
-				}
-				if(unweightedConstitutiveRectangle!=null){
-					for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
-						rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-					}
-				}	
-			}
-			
-			
-		}
-		
-	}
-	private class Uncollapsed_Unweighted extends Unweighted{
-		
-		public Uncollapsed_Unweighted(){
-			spliceLines = new ArrayList<Line>();
-			unweightedIsoforms=new ArrayList<Rectangle_Unweighted>();
-			unweightedConstitutiveRectangle=new ArrayList<Rectangle_Unweighted>();
-			unweightedIsoformLabels = new ArrayList<Label>();
-			
-		}
-		/**
-		 * Loads information for positioning unweighted isoforms into
-		 * global arrays where they will be drawn through the draw function.
-		 *
-		 * @param isoforms a collection of MRNA
-		 */
-		public synchronized void loadNewArrayOfUnweightedIsoforms(Collection<MRNA> isoforms){
-			//Clear Existing Arrays
-			unweightedIsoforms.clear(); 
-			spliceLines.clear();
-			unweightedIsoformLabels.clear(); 
-			unweightedConstitutiveRectangle.clear(); 
-			
-			ArrayList<MRNA> newListOfMRNA = new ArrayList<MRNA>();
-			
-			ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
-			
-			
-			
-			//The code below fill in rectanglesToDraw with scaled values
-			if(isoforms!=null){
-				int yPosition = graphYEnd;	
-				for(MRNA mrna: isoforms){
-					newListOfMRNA.add(mrna);
-					
-					
-					//sortedRectangles are used to draw the spliceLines
-					ArrayList<Rectangle_Unweighted> sortedRectangles= new ArrayList<Rectangle_Unweighted>();
-					
-					int color = color(40);
-					for(Exon exon :mrna.getExons().values()){
-						color = color(40);//DarkGrey
-						float scaledLength= map(exon.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
-						float scaledStart = scaleAbsoluteCoord_Uncollapsed(exon.getStart());
-						
-						//(Y position is +5) because the yPosition is relative to where the corner of the CDS are supposed
-						//to start. The exons are 10 pixels tall so that means that the corner of the exon is 5 pixels lower
-						Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
-																				yPosition+5,
-																				scaledLength, 
-																				10,
-																				exon.getStart(),
-																				exon.getEnd(),
-																				mrna.getId(),
-																				color);
-						
-						unweightedIsoforms.add(temp);
-						sortedRectangles.add(temp);
-						
-						
-						
-						for(Interval interval:listOfConstitutiveIntervals){
-							if(interval.getStartCoord()>=exon.getStart() && interval.getEndCoord()<=exon.getEnd()){
-								color = color(0,0,255);
-								unweightedConstitutiveRectangle.add(new Rectangle_Unweighted(	scaleAbsoluteCoord_Uncollapsed(interval.getStartCoord()), 
-																								yPosition+5, 
-																								map(interval.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart), 
-																								10, 
-																								interval.getStartCoord(), 
-																								interval.getEndCoord(), 
-																								mrna.getId(), 
-																								color));
-							}
-						}
-					}				
-					
-					
-		
-					
-					
-					//CDS
-					for(CDS cds :mrna.getCDS().values()){
-						color = color(150);
-						float scaledLength= map(cds.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
-						float scaledStart = scaleAbsoluteCoord_Uncollapsed(cds.getStart());
-						
-						Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
-																				yPosition, 
-																				scaledLength, 
-																				20,
-																				cds.getStart(),
-																				cds.getEnd(),
-																				mrna.getId(),
-																				color);
-						unweightedIsoforms.add(temp);
-						//sortedRectangles.add(temp);
-						
-						for(Interval interval:listOfConstitutiveIntervals){
-							if(interval.getStartCoord()>=cds.getStart() && interval.getEndCoord()<=cds.getEnd()){
-								color = color(0,0,255);
-								unweightedConstitutiveRectangle.add(new Rectangle_Unweighted(	scaleAbsoluteCoord_Uncollapsed(interval.getStartCoord()), 
-																								yPosition, 
-																								map(interval.getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart), 
-																								20, 
-																								interval.getStartCoord(), 
-																								interval.getEndCoord(), 
-																								mrna.getId(), 
-																								color));
-							}
-						}
-						
-					}
-					
-					//Fill in spliceLines
-					spliceLines.addAll(getSpliceLines(sortedRectangles, yPosition));
-					
-					//Start and Stop Codons
-					color = color(0,255,0, 100);//Green
-					if(mrna.getStartCodon()!=null){
-						float scaledLength=map(mrna.getStartCodon().getLength(),0,absoluteLengthOfGene,
-								0,graphXEnd-graphXStart);
-						float scaledStart= scaleAbsoluteCoord_Uncollapsed(mrna.getStartCodon().getStart()); 
-
-						unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart,
-																			yPosition, 
-																			scaledLength, 
-																			20,
-																			mrna.getStartCodon().getStart(),
-																			mrna.getStartCodon().getEnd(),
-																			mrna.getId(),
-																			color));	
-					}
-					if(mrna.getStopCodon()!=null){
-						float scaledLength= map(mrna.getStopCodon().getLength(),0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
-						float scaledStart = scaleAbsoluteCoord_Uncollapsed(mrna.getStopCodon().getStart());
-						
-						unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart,
-																			yPosition,
-																			scaledLength, 
-																			20,
-																			mrna.getStopCodon().getStart(),
-																			mrna.getStopCodon().getEnd(),
-																			mrna.getId(),
-																			color));
-					}
-					unweightedIsoformLabels.add(new Label(mrna.getId(), 10, yPosition+20));
-					
-					yPosition +=30;
-				}
-			}
-			currentlyViewingIsoforms=newListOfMRNA;
-			if(!isCodingStrand){
-				if(unweightedIsoforms!=null){
-					for(Rectangle_Unweighted rectangle:unweightedIsoforms){
-						rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-					}	
-				}
-				if(spliceLines!=null){
-					for(Line line:spliceLines){	
-						line.setXCoordStart(reverse(line.getXCoordStart()));
-						line.setXCoordEnd(reverse(line.getXCoordEnd()));
-					}	
-				}
-				if(unweightedConstitutiveRectangle!=null){
-					for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){	
-						rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-					}
-				}	
-			}
-		}
 	}
 	public void loadCurrentlyViewingShortReads() {
 		if(geneSAMRecords!=null){

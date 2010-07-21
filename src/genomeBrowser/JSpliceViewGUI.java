@@ -12,8 +12,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -579,7 +577,11 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					
 					listOfSamRecords.add(samRecords);
 					shortReadChooser.setEnabled(false);
+					
 					String name = JOptionPane.showInputDialog(this,"Please Name The Short Reads File", "name");
+					while(bamFileName.values().contains(name)){
+						name = JOptionPane.showInputDialog(this,"Please Enter a Unique File Name", "name");
+					}
 					shortReadChooser.addItem(name);
 					shortReadChooser.setSelectedIndex(listOfSamRecords.size()-1);
 					shortReadChooser.setEnabled(true);
@@ -638,7 +640,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				geneChooser.setEnabled(true);
 				
 				Gene gene = getCurrentlySelectedGene();
-				applet.loadNewArrayOfIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
+				
 				
 				//Fill in the choices for the Isoforms
 				isoformList.removeAllElements();
@@ -651,6 +653,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				isCodingCheckBox.setSelected(true);//Always start off loading a coding gene 
 				isCodingCheckBox.setEnabled(true);
 				spliceLinesCheckBox.setEnabled(true);
+				
+				applet.loadNewArrayOfIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
 				actionWhenBothFilesAreLoaded();			
 			}
 		

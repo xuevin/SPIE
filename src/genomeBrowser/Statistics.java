@@ -22,17 +22,16 @@ import net.sf.samtools.SAMRecord;
  */
 public class Statistics {
 	public enum Method{
-		METHOD0,METHOD1,METHOD2,METHOD3
+		COVERAGEPEREXON,RPK,RPKM,METHOD3
 	}
-	
 	/** The total number of reads in a BAM file. */
 	private static int totalNumberOfReads;
 
-	/** The overhang used for calculating method 2. (Default is 4)*/
+	/** The overhang used for calculating. (Default is 4)*/
 	private static int overhang = 4;
 
-	/** The method to use when calculating weights. */
-	private static Method method= Method.METHOD0;
+	/** The default method to use when calculating weights. */
+	private static Method method= Method.COVERAGEPEREXON;
 	
 	/** The short read length.(Default is 35) */ 
 	private static int shortReadLength = 35;
@@ -77,10 +76,10 @@ public class Statistics {
 		int absoluteEnd = exon.getEnd();
 		switch(method){
 			//Average Coverage Per Exon	
-			case METHOD0: return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);
-			case METHOD1: return getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads);
-			case METHOD2: return (getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads)*100000000;
-			default: return getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads); 
+			case COVERAGEPEREXON: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);
+			case RPK: return getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads);
+			case RPKM: return (getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads)*100000000;
+			default: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads); 
 		}
 					 
 			
@@ -139,7 +138,7 @@ public class Statistics {
 	 * 
 	 * @return the sum of reads per base divided by total number of bases
 	 */
-	public static float getAverage_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static float getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
 		int sum =0;
@@ -174,9 +173,9 @@ public class Statistics {
 	}
 	public static float getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		switch(method){
-			case METHOD0:return getStandardDeviation_ReadsPerBase(absoluteStart, absoluteEnd,compatibleShortReads);
-			case METHOD1:return 0;
-			case METHOD2:return 0;
+			case COVERAGEPEREXON:return getStandardDeviation_ReadsPerBase(absoluteStart, absoluteEnd,compatibleShortReads);
+			case RPK:return 0;
+			case RPKM:return 0;
 			case METHOD3:return 0;
 			default:return 0;
 		}
@@ -195,7 +194,7 @@ public class Statistics {
 	public static float getStandardDeviation_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads) {
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
-		float mean = getAverage_ReadsPerBase(absoluteStart, absoluteEnd, compatibleShortReads);	
+		float mean = getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);	
 		double variance=0;
 		for(int i = absoluteStart;i<=absoluteEnd;i++){
 			int value = compatibleDensityMap.get(i);
@@ -520,12 +519,11 @@ public class Statistics {
 		overhang = iOverhang;
 		
 	}
-
 	public static float getWeightOfJunction(Junction junction) {
 		switch(method){
-			case METHOD0: return junction.getHits();
-			case METHOD1: return 0;
-			case METHOD2: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
+			case COVERAGEPEREXON: return junction.getHits();
+			case RPK: return 0;
+			case RPKM: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
 			default: return 10;
 			//FIXME getting junction weights
 		}	
