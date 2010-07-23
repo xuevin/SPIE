@@ -43,9 +43,9 @@ public class UpdateAnimation implements Runnable{
 					if(j==0 | j== weightedIsoforms.size()-1){
 						endExon=true;
 					}
-					float newWeight =Statistics.getWeightOfExon(isoform.getExons().get(rect.getAbsoluteStart()),
+					double newWeight =Statistics.getWeightOfExon(isoform.getExons().get(rect.getAbsoluteStart()),
 							compatibleShortReads,endExon);
-					float intermediate = PApplet.map(i,0,itr,rect.getWeight(),newWeight);
+					double intermediate = PApplet.map(i,0,itr,(float)rect.getWeight(),(float)newWeight);
 					rect.setWeight(intermediate);
 				}	
 			}

@@ -2,11 +2,11 @@ package drawableObjects;
 
 
 public class Rectangle_Unweighted{
-	private float xScaledCoord;
-	private float yScaledCoord;
-	private float length;
+	private int xScaledCoord;
+	private int yScaledCoord;
+	private int scaledLength;
 	private int color;
-	private float height;
+	private int scaledHeight;
 	private int absoluteStart;
 	private int absoluteEnd;
 	private String isoformID;
@@ -23,22 +23,22 @@ public class Rectangle_Unweighted{
 	 * @param iIsoformID the ID of the MRNA that this rectangle is a part of
 	 * @param iColor the color of the rectangle
 	 */
-	public Rectangle_Unweighted(float iScaledXCoord,float iScaledYCoord,float iScaledLength, 
-			float iScaledHeight,int iAbsoluteStart, int iAbsoluteEnd,String iIsoformID,int iColor){
+	public Rectangle_Unweighted(int iScaledXCoord,int iScaledYCoord,int iScaledLength, 
+			int iScaledHeight,int iAbsoluteStart, int iAbsoluteEnd,String iIsoformID,int iColor){
 		xScaledCoord=iScaledXCoord;
 		yScaledCoord=iScaledYCoord;
-		length=iScaledLength;
-		height=iScaledHeight;
+		scaledLength=iScaledLength;
+		scaledHeight=iScaledHeight;
 		color=iColor;
 		absoluteStart=iAbsoluteStart;
 		absoluteEnd=iAbsoluteEnd;
 		isoformID=iIsoformID;
 	}
 	public void setScaledLength(int iLength) {
-		length = iLength;
+		scaledLength = iLength;
 	}
-	public float getScaledLength() {
-		return length;
+	public int getScaledLength() {
+		return scaledLength;
 	}
 	public void setColor(int iColor) {
 		color = iColor;
@@ -47,21 +47,21 @@ public class Rectangle_Unweighted{
 		return color;
 	}
 	public void setScaledHeight(int iHeight) {
-		height = iHeight;
+		scaledHeight = iHeight;
 	}
-	public float getScaledHeight() {
-		return height;
+	public int getScaledHeight() {
+		return scaledHeight;
 	}
-	public void setScaledXCoord(float iXCoord) {
+	public void setScaledXCoord(int iXCoord) {
 		xScaledCoord = iXCoord;
 	}
-	public float getScaledXCoord() {
+	public int getScaledXCoord() {
 		return xScaledCoord;
 	}
-	public void setScaledYCoord(float iYCoord) {
+	public void setScaledYCoord(int iYCoord) {
 		yScaledCoord = iYCoord;
 	}
-	public float getScaledYCoord() {
+	public int getScaledYCoord() {
 		return yScaledCoord;
 	}
 	public void setAbsoluteStart(int iAbsoluteStart) {

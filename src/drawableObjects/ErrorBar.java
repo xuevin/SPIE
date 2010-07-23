@@ -2,9 +2,9 @@ package drawableObjects;
 
 public class ErrorBar {
 	private double standardDeviation;
-	private float scaledXPosition;
+	private int scaledXPosition;
 	private String isoformID;
-	private float weight;
+	private double weight;
 	private Rectangle_Weighted rectangle;
 	
 	/**
@@ -16,7 +16,7 @@ public class ErrorBar {
 	 * @param iWeight the weight of the error bar
 	 * @param iStandardDeviation the standard deviation of the error bar
 	 */
-	public ErrorBar(float iWeight, float iStandardDeviation, Rectangle_Weighted iRectangle,String iIsoformID,float iScaledXPosition) {
+	public ErrorBar(double iWeight, double iStandardDeviation, Rectangle_Weighted iRectangle,String iIsoformID,int iScaledXPosition) {
 		scaledXPosition=iScaledXPosition;
 		weight=iWeight;
 		standardDeviation=iStandardDeviation;
@@ -29,22 +29,22 @@ public class ErrorBar {
 	public int getAbsoluteEnd(){
 		return rectangle.getAbsoluteEnd();
 	}
-	public float getScaledXPosition(){
+	public int getScaledXPosition(){
 		return scaledXPosition;
 	}
 	public double getStandardDeviation(){
 		return standardDeviation;
 	}
-	public void setScaledXCoord(float i) {
+	public void setScaledXCoord(int i) {
 		scaledXPosition=i;
 	}
-	public float getWeight() {
+	public double getWeight() {
 		return weight;
 	}
 	public String getIsoformID(){
 		return isoformID;
 	}
-	public void setWeight(float f){
+	public void setWeight(double f){
 		weight = f;
 	}
 	

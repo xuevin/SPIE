@@ -2,18 +2,18 @@ package drawableObjects;
 
 public class Rectangle_Weighted{
 
-	private float weight;
-	private float scaledXCoord;
-	private float scaledLength;
+	private double weight;
+	private int scaledXCoord;
+	private int scaledLength;
 	private int absoluteStart;
 	private int absoluteEnd;
 	private int color;
-	private float scaledHeight;
+	private int scaledHeight;
 	private String isoformID;
 	
 	/**
-	 * Instantiates a new Rectangle_Weighted
-	 * 
+	 * Instantiates a new Rectangle_Weighted.
+	 *
 	 * @param iScaledXCoord the left value of the X coordinate of the rectangle
 	 * @param iScaledLength the scaled length of the rectangle
 	 * @param iScaledHeight the height of the rectangle
@@ -23,8 +23,8 @@ public class Rectangle_Weighted{
 	 * @param iWeight the weight of the rectangle (should represent the average number of short reads that span its region)
 	 * @param iColor the color of the rectangle
 	 */
-	public Rectangle_Weighted(float iScaledXCoord, float iScaledLength, float iScaledHeight, int iAbsoluteStart,
-			int iAbsoluteEnd, String iIsoformID, float iWeight,int iColor) {
+	public Rectangle_Weighted(int iScaledXCoord, int iScaledLength, int iScaledHeight, int iAbsoluteStart,
+			int iAbsoluteEnd, String iIsoformID, double iWeight,int iColor) {
 		scaledXCoord=iScaledXCoord;
 		scaledLength=iScaledLength;
 		weight =iWeight;
@@ -34,13 +34,13 @@ public class Rectangle_Weighted{
 		scaledHeight=iScaledHeight;
 		isoformID=iIsoformID;	
 	}
-	public void setWeight(float iWeight) {
+	public void setWeight(double iWeight) {
 		weight = iWeight;
 	}
-	public float getWeight() {
+	public double getWeight() {
 		return weight;
 	}
-	public void incrementWeight(float increment){
+	public void incrementWeight(double increment){
 		weight+=increment;
 	}
 	public int getAbsoluteLength() {
@@ -52,19 +52,19 @@ public class Rectangle_Weighted{
 	public int getAbsoluteEnd(){
 		return absoluteEnd;
 	}
-	public float getScaledLength(){
+	public int getScaledLength(){
 		return scaledLength;
 	}
-	public float getScaledXCoord(){
+	public int getScaledXCoord(){
 		return scaledXCoord;
 	}
-	public void setScaledXCoord(float iScaledXCoord){
+	public void setScaledXCoord(int iScaledXCoord){
 		scaledXCoord=iScaledXCoord;
 	}
 	public int getColor(){
 		return color;
 	}
-	public float getScaledHeight(){
+	public int getScaledHeight(){
 		return scaledHeight;
 	}
 	public String getIsoformID(){

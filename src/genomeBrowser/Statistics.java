@@ -21,6 +21,7 @@ import net.sf.samtools.SAMRecord;
  * @author Vincent Xue
  */
 public class Statistics {
+	
 	public enum Method{
 		COVERAGEPEREXON,RPK,RPKM,METHOD3
 	}
@@ -36,6 +37,9 @@ public class Statistics {
 	/** The short read length.(Default is 35) */ 
 	private static int shortReadLength = 35;
 	
+	protected Statistics(){
+		//This is not ment to be instantiated
+	}
 	/**
 	 * Sets the method to use for calculating weights.
 	 * 
@@ -52,7 +56,6 @@ public class Statistics {
 	public static void setTotalNumberOfReads(int i){
 		totalNumberOfReads=i;
 	}
-	
 	/**
 	 * Sets the short read length.
 	 *
@@ -71,9 +74,10 @@ public class Statistics {
 	 * 
 	 * @return the weight
 	 */
-	public static float getWeightOfExon(Exon exon, ArrayList<ShortRead> compatibleShortReads,Boolean endExon){
+	public static double getWeightOfExon(Exon exon, ArrayList<ShortRead> compatibleShortReads,Boolean endExon){
 		int absoluteStart = exon.getStart();
 		int absoluteEnd = exon.getEnd();
+		System.out.println(method.toString());
 		switch(method){
 			//Average Coverage Per Exon	
 			case COVERAGEPEREXON: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);
@@ -81,8 +85,6 @@ public class Statistics {
 			case RPKM: return (getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads)*100000000;
 			default: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads); 
 		}
-					 
-			
 	}
 	
 	/**
@@ -105,7 +107,7 @@ public class Statistics {
 	 * 
 	 * @return the ratio of all reads : total number of start positions
 	 */
-	private static float getAllReads_Per_TotalPossiblePositions(
+	private static double getAllReads_Per_TotalPossiblePositions(
 			int absoluteStart, int absoluteEnd,
 			ArrayList<ShortRead> compatibleShortReads,boolean endExon) {
 		int count=0;
@@ -126,7 +128,7 @@ public class Statistics {
 		}else{
 			possibleStartPositions=length-2*(overhang-1) + ((shortReadLength-1)-2*(overhang-1));
 		}
-		return (float)count/possibleStartPositions;
+		return (double)count/possibleStartPositions;
 	}
 	
 	/**
@@ -138,7 +140,7 @@ public class Statistics {
 	 * 
 	 * @return the sum of reads per base divided by total number of bases
 	 */
-	public static float getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static double getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
 		int sum =0;
@@ -146,7 +148,7 @@ public class Statistics {
 			sum+=(compatibleDensityMap.get(i));
 		}
 		int length = (absoluteEnd-absoluteStart+1);
-		return (float)sum/length;
+		return (double)sum/length;
 	}
 	
 	/**
@@ -158,7 +160,7 @@ public class Statistics {
 	 * 
 	 * @return the number of reads for the exon divided by the length of the exon
 	 */
-	public static float getBodyReads_Per_ExonLength(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static double getBodyReads_Per_ExonLength(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		int length = (absoluteEnd-absoluteStart+1);
 		int count=0;
 		for(ShortRead shortRead:compatibleShortReads){
@@ -169,9 +171,9 @@ public class Statistics {
 			}
 			
 		}
-		return (float)count/(length);
+		return (double)count/(length);
 	}
-	public static float getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static double getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
 		switch(method){
 			case COVERAGEPEREXON:return getStandardDeviation_ReadsPerBase(absoluteStart, absoluteEnd,compatibleShortReads);
 			case RPK:return 0;
@@ -191,16 +193,16 @@ public class Statistics {
 	 * 
 	 * @return the standard deviation_ reads per base
 	 */
-	public static float getStandardDeviation_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads) {
+	public static double getStandardDeviation_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads) {
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
-		float mean = getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);	
+		double mean = getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);	
 		double variance=0;
 		for(int i = absoluteStart;i<=absoluteEnd;i++){
 			int value = compatibleDensityMap.get(i);
 			variance+= Math.pow((value-mean), 2);
 		}
-		return (float) Math.sqrt(variance/(absoluteEnd-absoluteStart));//Don't need the minus one because this is inclusive
+		return (double) Math.sqrt(variance/(absoluteEnd-absoluteStart));//Don't need the minus one because this is inclusive
 	}
 	
 	/**
@@ -519,16 +521,16 @@ public class Statistics {
 		overhang = iOverhang;
 		
 	}
-	public static float getWeightOfJunction(Junction junction) {
+	public static double getWeightOfJunction(Junction junction) {
 		switch(method){
 			case COVERAGEPEREXON: return junction.getHits();
 			case RPK: return 0;
-			case RPKM: return (float)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
+			case RPKM: return (double)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
 			default: return 10;
 			//FIXME getting junction weights
 		}	
 	}
-	public static float getRPKM(ArrayList<SAMRecord> allSAMRecord, ArrayList<Interval> constitutiveIntervals,int totalNumberOfReads){
+	public static double getRPKM(ArrayList<SAMRecord> allSAMRecord, ArrayList<Interval> constitutiveIntervals,int totalNumberOfReads){
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
 		ArrayList<Interval> listOfIntervals = new ArrayList<Interval>();
 		
@@ -538,8 +540,8 @@ public class Statistics {
 			}
 		}
 		//System.out.println(listOfIntervals.size());
-		float count=0;
-		float denominator=0;
+		double count=0;
+		double denominator=0;
 		for(Interval interval:listOfIntervals){
 			denominator+=(interval.getLength()-shortReadLength+1);
 			for(SAMRecord samRecord:allSAMRecord){
@@ -554,8 +556,8 @@ public class Statistics {
 		}
 		//Divide by a thousand
 		denominator=denominator/1000;
-		//System.out.println((count/denominator)/((float)totalNumberOfReads/1000000));
-		return (count/denominator)/((float)totalNumberOfReads/1000000);
+		//System.out.println((count/denominator)/((double)totalNumberOfReads/1000000));
+		return (count/denominator)/((double)totalNumberOfReads/1000000);
 	}
 
 }

@@ -1,37 +1,37 @@
 package drawableObjects;
 
 public class Junction {
-	float leftScaled;
-	float rightScaled;
-	int hit;
-	float weight;
-	public Junction(float iLeft,float iRight,int initialHit){
+	private int leftScaled;
+	private int rightScaled;
+	private int hit;
+	private double weight;
+	public Junction(int iLeft,int iRight,int initialHit){
 		leftScaled=iLeft;
 		rightScaled=iRight;
 		hit=initialHit;
 	}
-	public float getLeftScaled(){
+	public int getLeftScaled(){
 		return leftScaled;
 	}
-	public float getRightScaled(){
+	public int getRightScaled(){
 		return rightScaled;
 	}
-	public void setLeftScaled(float iLeft){
+	public void setLeftScaled(int iLeft){
 		leftScaled=iLeft;
 	}
-	public void setRightScaled(float iRight){
+	public void setRightScaled(int iRight){
 		rightScaled=iRight;	
 	}
 	public void incrementCount(int increment){
 		hit+=increment;
 	}
-	public void setWeight(float iWeight){
+	public void setWeight(double iWeight){
 		weight = iWeight;
 	}
-	public float getWeight() {
+	public double getWeight() {
 		return weight;
 	}
-	public float getHits() {
+	public int getHits() {
 		return hit;
 	}
 	

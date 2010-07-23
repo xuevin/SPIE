@@ -22,6 +22,8 @@ public class CountReadsInBAM implements Runnable{
 	private JLabel rpkm;
 	private JSpliceViewGUI parent;
 	
+	
+	
 	public CountReadsInBAM(SAMFileReader input,SAMFileReader clone,String iName,
 			JSpliceViewGUI iParent,HashMap<SAMFileReader, Integer> bamFileCount,JPanel iPanelToUpdate){ 
 		itr = clone.iterator();
