@@ -1,6 +1,6 @@
 package genomeBrowser;
 
-import genomeBrowser.ShortRead;
+import genomeBrowser.Read;
 import genomeBrowser.Statistics;
 
 import gffParser.CDS;
@@ -51,8 +51,8 @@ public class ProcessingApplet extends PApplet{
 				junctionList.clear();
 				errorBars.clear();
 				weightedConstitutiveRectangles.clear();
-				loadReads(sampleName,newSampleReads);
-				ArrayList<ShortRead> compatibleShortReads = Statistics.getCompatibleShortReads(isoform, newSampleReads);
+				loadSingleReadSample(sampleName,newSampleReads);
+				ArrayList<Read> compatibleReads = Statistics.getCompatibleReads(isoform, newSampleReads);
 				ArrayList<Rectangle_Weighted> exonsOnly= new ArrayList<Rectangle_Weighted>();
 				synchronized (weightedIsoforms) {
 					String id="";
@@ -76,7 +76,7 @@ public class ProcessingApplet extends PApplet{
 				if(currentAnimation!=null && currentAnimation.isAlive()){
 					currentAnimation.interrupt();
 				}else{
-					currentAnimation = new Thread(new UpdateAnimation(pApplet,isoform,compatibleShortReads,weightedIsoforms));
+					currentAnimation = new Thread(new UpdateAnimation(pApplet,isoform,compatibleReads,weightedIsoforms));
 					currentAnimation.start();	
 				}	
 				
@@ -127,7 +127,7 @@ public class ProcessingApplet extends PApplet{
 			}
 
 			public synchronized void loadNewArrayOfWeightedIsoforms(Collection<MRNA> listOfMRNA){
-				if(sampleReads!=null){
+				if(currentListOfSamples.size()!=0){
 					//Make new arrays
 					weightedIsoforms.clear(); 
 					referenceIsoforms.clear();
@@ -136,28 +136,35 @@ public class ProcessingApplet extends PApplet{
 					weightedConstitutiveRectangles.clear();
 					junctionList.clear();
 					
-					ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
+					ArrayList<Interval> listOfConstitutiveIntervals = Statistics.getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
 					
 					//Get a list of the large consitutitive exons
 					ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(listOfMRNA);
 					
 					
 					int yRefStart=30; // Start of where the reference labels go
+					int count =0;
 					//For each isoform
 					for(MRNA mrna:listOfMRNA){
 						hashOfIsoforms.put(mrna.getId(),mrna);
 						int cdsColor = color(150);
 						int exonColor = color(40);
 						if(listOfMRNA.size()>1){	
-							colorMode(HSB, 450,100,50);
-							cdsColor = color(yRefStart,100,100);
-							exonColor = color(yRefStart,100,100);
+							colorMode(HSB, 40,100,50);
+							if(count%2==0){
+								cdsColor = color(count+20,100,100);
+								exonColor = color(count+20,100,100);	
+							}else{
+								cdsColor = color(count,100,100);
+								exonColor = color(count,100,100);
+							}
+							count++;
 							colorMode(RGB,255);
 						}else{
 							fillJunctionList(junctionList,mrna);
 						}
 						
-						ArrayList<ShortRead>compatibleShortReads = Statistics.getCompatibleShortReads(mrna, sampleReads);
+						ArrayList<Read>compatibleReads = Statistics.getCompatibleReads(mrna, currentListOfSamples.get(0));
 						referenceLabels.add(new Label(mrna.getId(), 10, yRefStart+10));
 						
 						//For each exon
@@ -169,7 +176,7 @@ public class ProcessingApplet extends PApplet{
 							if(exonCountPosition==0 || exonCountPosition==mrna.getExons().values().size()-1){
 								endExon=true;
 							}
-							double average = Statistics.getWeightOfExon(exon,compatibleShortReads,endExon);
+							double average = Statistics.getWeightOfExon(exon,compatibleReads,endExon);
 							exonCountPosition++;
 							
 							//Scale the length and start
@@ -186,7 +193,7 @@ public class ProcessingApplet extends PApplet{
 																				exonColor);
 							weightedIsoforms.add(temp);
 							errorBars.add(new ErrorBar(	average,
-									Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleShortReads),
+									Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleReads),
 									temp,mrna.getId(),(startScaled+lengthScaled/2)));
 							
 							//Fill in array that draws the reference isoforms
@@ -282,7 +289,7 @@ public class ProcessingApplet extends PApplet{
 						}	
 					}
 				}else{
-					System.err.println("A call was made to loadWeightedIsoforms but there was no shortReadData");
+					System.err.println("A call was made to loadWeightedIsoforms but there was no Read Data");
 				}
 				
 			}
@@ -335,50 +342,36 @@ public class ProcessingApplet extends PApplet{
 						"\nStart:\t"+rect.getAbsoluteStart() + 
 						"\nEnd: \t " + rect.getAbsoluteEnd()+
 						"\nLength:\t" + rect.getAbsoluteLength() +
-						"\n#Body Reads:\t" +  Statistics.getNumberOfBodyReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), sampleReads) + 
-						"\n#Junction Reads:\t" + Statistics.getNumberOfJunctionReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), sampleReads)
+						"\n#Body Reads:\t" +  Statistics.getNumberOfBodyReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), currentListOfSamples.get(0)) + 
+						"\n#Junction Reads:\t" + Statistics.getNumberOfJunctionReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), currentListOfSamples.get(0))
 						,mouseX+10,mouseY);
 						
 				}	
 			}
 	
 			private void drawJunctionLines() {
-						if(junctionList!=null){
-							synchronized (junctionList) {
-								stroke(255,0,0);
-								strokeWeight(3);
-								for(Junction junction:junctionList){
-									int yPos=graphYStart;
-			//						for(int i=0;i<junction.getHits();i++){
-			//							line(junction.getLeftScaled(),yPos,junction.getRightScaled(),yPos);
-			//							yPos-=yScale;
-			//						}
-									int height = (int) (yPos-(yScale*junction.getWeight()));
-									line(junction.getLeftScaled(),height,junction.getRightScaled(),height);
-								}
-								strokeWeight(1);
-								stroke(1);
-							}
+				if(junctionList!=null){
+					synchronized (junctionList) {
+						stroke(255,0,0);
+						strokeWeight(3);
+						for(Junction junction:junctionList){
+							int yPos=graphYStart;
+	//						for(int i=0;i<junction.getHits();i++){
+	//							line(junction.getLeftScaled(),yPos,junction.getRightScaled(),yPos);
+	//							yPos-=yScale;
+	//						}
+							int height = (int) (yPos-(yScale*junction.getWeight()));
+							line(junction.getLeftScaled(),height,junction.getRightScaled(),height);
 						}
-						
-						
+						strokeWeight(1);
+						stroke(1);
 					}
-	
-			/**
-			 * Draws a label that describes the height at each xCoordinate.
-			 */
-			//FIXME should contain info about both sets of short read
-			private void drawLabelForHeight(){
+				}
 				
-				if(readsPlotToDraw!=null){
-					if(mouseX>=graphXStart && mouseX<=graphXEnd){
-						text("Average Height "+ getShortReadDensityHeightAt(mouseX) + " @ "+ 
-								"\n"+getAbsoluteCoordinates(mouseX), 350, 650);
-						line(mouseX,shortReadPlotYStart,mouseX,shortReadPlotYStart+10);
-						line(mouseX,shortReadPlotYStart+10,400,620);
-					}	
-				}	
+				
 			}
+	
+			
 	
 			/**
 			 * Draw the labels for the reference isoforms.
@@ -425,7 +418,7 @@ public class ProcessingApplet extends PApplet{
 									//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
 								//Because the rectangle is drawn from the corner, subtract half its height;
 								newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
-								colorMode(HSB, 450,100,50);
+								colorMode(HSB, 40,100,50);
 								rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
 								colorMode(RGB,255);
 							}
@@ -444,7 +437,6 @@ public class ProcessingApplet extends PApplet{
 			private void drawWeightedIsoforms() {
 				drawGrid();
 				synchronized (weightedIsoforms) {
-					
 					for(Rectangle_Weighted rectangle:weightedIsoforms){
 						
 						fill(rectangle.getColor());
@@ -452,7 +444,7 @@ public class ProcessingApplet extends PApplet{
 							//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
 						//Because the rectangle is drawn from the corner, subtract half its height;
 						newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
-						colorMode(HSB, 450,100,50);
+						colorMode(HSB, 40,100,50);
 						rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
 						colorMode(RGB,255);
 					}
@@ -463,7 +455,6 @@ public class ProcessingApplet extends PApplet{
 				drawReferenceIsoform();
 				drawWeightedConstitutiveRectangles();
 				drawJunctionLines();
-				drawLabelForHeight();
 				drawHoverInfo();
 			}
 	
@@ -473,10 +464,10 @@ public class ProcessingApplet extends PApplet{
 				temp.add(isoform);
 				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(temp);
 				
-				for(ShortRead shortRead:Statistics.getCompatibleShortReads(isoform, sampleReads)){
-					if(shortRead.isJunctionRead()){
-						int startScaled = scalePosition(shortRead.getFirstExonEnd()+1,listOfIntrons);
-						int endScaled = scalePosition(shortRead.getLastExonBeginning()-1,listOfIntrons);				
+				for(Read read:Statistics.getCompatibleReads(isoform, currentListOfSamples.get(0))){
+					if(read.isJunctionRead()){
+						int startScaled = scalePosition(read.getFirstExonEnd()+1,listOfIntrons);
+						int endScaled = scalePosition(read.getLastExonBeginning()-1,listOfIntrons);				
 						
 						boolean found =false;
 						for(Junction junction:iJunctionList){
@@ -582,13 +573,12 @@ public class ProcessingApplet extends PApplet{
 				unweightedIsoformLabels.clear(); 
 				unweightedConstitutiveRectangle.clear(); 
 				
-				ArrayList<Interval> listOfConstitutiveIntervals = getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
+				ArrayList<Interval> listOfConstitutiveIntervals = Statistics.getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
 				
 				
 				//Get a list of the large consitutitive exons
 				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
 				
-				//Plot the shortened isoforms
 				int yPosition=graphYEnd;
 				
 				for(MRNA mrna : isoforms){
@@ -796,8 +786,7 @@ public class ProcessingApplet extends PApplet{
 			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
 		}
 	}
-	private class Uncollapsed_Unweighted extends Unweighted{
-		
+	private class Uncollapsed_Unweighted extends Unweighted{	
 		public Uncollapsed_Unweighted(){
 			spliceLines = new ArrayList<Line>();
 			unweightedIsoforms=new ArrayList<Rectangle_Unweighted>();
@@ -837,31 +826,30 @@ public class ProcessingApplet extends PApplet{
 	private ArrayList<Integer> tempConstitutiveUnscaledPositions,customConstitutiveUnscaledPositions;
 	
 	private ArrayList<ArrayList<GraphColumn> > readsPlotToDraw;
-//	private HashMap<Integer, GraphColumn> shortReads_Set_U2;
-//	private HashMap<Integer,GraphColumn>shortReads_Set_U1;
-//	private HashMap<Integer,GraphColumn>shortReads_Set_C1;
-//	private HashMap<Integer,GraphColumn>shortReads_Set_C2;
 	
 	private int yScale;
-	private int graphYStart,graphXEnd,graphXStart,graphYEnd,shortReadPlotYStart;
+	private int graphYStart,graphXEnd,graphXStart,graphYEnd,readPlotYStart;
 	
 	
 	//Data Specific to GENE (Viwer can at most view one gene at a time)
 	private int absoluteStartOfGene;
 	private int absoluteLengthOfGene;
 	private int absoluteEndOfGene;
-	private ArrayList<SAMRecord> sampleReads; //Different per gene (used to calculate weights)
+//	private ArrayList<SAMRecord> sampleReads; //Different per gene (used to calculate weights)
+//	private String sampleReadsName;
 	private Thread currentAnimation;
 	private HashMap<String,MRNA> hashOfIsoforms; //Key is the MRNA ID
 	private View view;
 	private boolean constitutiveRegionsVisible;
 	private boolean recordPDF;
 	private String locationToSave;
-	private String sampleReadsName;
+	
 	private ArrayList<String> currentListOfSampleNames;
 	private ArrayList<Integer> currentListOfBamCounts;
 	private ArrayList<ArrayList<SAMRecord>> currentListOfSamples;
 	private boolean multipleReadsVisible;
+	private int readsPlotHeight;
+	
 	
 	/**
 	 * Instantiates a new processing applet.
@@ -891,17 +879,21 @@ public class ProcessingApplet extends PApplet{
 		tempConstitutiveUnscaledPositions=new ArrayList<Integer>();
 		customConstitutiveUnscaledPositions = new ArrayList<Integer>();
 		
+		
+
+		
+		
 		//----
-		sampleReads=null;
-		currentListOfBamCounts =null;
-		currentListOfSampleNames = null;
-		currentListOfSamples = null;
+		currentListOfBamCounts = new ArrayList<Integer>();
+		currentListOfSampleNames = new ArrayList<String>();
+		currentListOfSamples = new ArrayList<ArrayList<SAMRecord>>();
 		
 		graphYStart = 500;
 		graphYEnd = 80;
 		graphXStart = 200;
 		graphXEnd = 900;
-		shortReadPlotYStart =600;
+		readPlotYStart =600;
+		readsPlotHeight=80;
 	}
 	public void setView(View iView){
 		view=iView;
@@ -925,10 +917,18 @@ public class ProcessingApplet extends PApplet{
 	 * @see processing.core.PApplet#draw()
 	 */
 	public synchronized void draw(){
+		if(mouseY<readPlotYStart&&mouseY>readPlotYStart-readsPlotHeight){
+			cursor(HAND);
+		}else{
+			cursor(ARROW);
+			
+		}
+		
 		if(recordPDF){
 			beginRecord(PDF,locationToSave);
 			textFont(createFont("Arial", 16));
 		}
+		
 		
 		background(255);
 		text(frameRate,20,20);
@@ -939,6 +939,7 @@ public class ProcessingApplet extends PApplet{
 			case COLLAPSED_WEIGHTED:collapsed_Weighted.draw();break;
 		}
 		drawReadsPlot();
+		drawLabelForHeight();
 		
 		if(recordPDF){
 			endRecord();
@@ -946,6 +947,20 @@ public class ProcessingApplet extends PApplet{
 		    textFont(loadFont("Calibri-16.vlw"));
 		}
 		
+	}
+	/**
+	 * Draws a label that describes the height at each xCoordinate.
+	 */
+	private void drawLabelForHeight(){
+		
+		if(readsPlotToDraw.size()!=0){
+			if(mouseX>=graphXStart && mouseX<=graphXEnd){
+				text("Average Height "+ getShortReadDensityHeightAt(mouseX) + " @ "+ 
+						"\n"+getAbsoluteCoordinates(mouseX), 350, 650);
+				line(mouseX,readPlotYStart,mouseX,readPlotYStart+10);
+				line(mouseX,readPlotYStart+10,400,620);
+			}	
+		}	
 	}
 	/**
 	 * Sets the new size of the PApplet
@@ -960,7 +975,7 @@ public class ProcessingApplet extends PApplet{
 		graphYEnd = (int) (((double)1/10)*iHeight);
 		graphXStart = 200;//(int) (((double)2/10)*iWidth);
 		graphXEnd = (int) (((double)9/10)*iWidth);
-		shortReadPlotYStart =(int) (((double)6/8)*iHeight);
+		readPlotYStart =(int) (((double)6/8)*iHeight);
 		//int titleBarHeight = getBounds().y;
 	    //setSize(iWidth, iHeight-titleBarHeight);
 	}
@@ -1002,6 +1017,30 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 	}
+	public void mouseDragged(){
+		if(mouseY<readPlotYStart&&mouseY>readPlotYStart-readsPlotHeight){
+			readsPlotHeight=(readsPlotHeight+(pmouseY-mouseY));
+			line(graphXStart,readPlotYStart-readsPlotHeight,graphXEnd,readPlotYStart-readsPlotHeight);
+//			synchronized (readsPlotToDraw) {
+//				for(ArrayList<GraphColumn> plot:readsPlotToDraw){
+//					for(GraphColumn column:plot){
+//						//FIXME
+//						int newScaledHeight=(int) map((float) column.getScaledHeight(),0,readsPlotHeight,0,readsPlotHeight+mouseDragY);
+//						column.setScaledHeight(newScaledHeight);
+//					}
+//				}	
+//			}
+			
+		}	
+	}
+	public void mouseReleased(){
+		if(currentListOfBamCounts.size()==currentListOfSamples.size() &&
+			currentListOfSampleNames.size()==currentListOfSamples.size()){
+			loadMultipleSamples(currentListOfSampleNames, currentListOfSamples, currentListOfBamCounts);		
+		}else{
+			loadSingleReadSample(currentListOfSampleNames.get(0), currentListOfSamples.get(0));
+		}
+	}
 	
 	private void drawReadsPlot(){
 		if(readsPlotVisible){
@@ -1010,21 +1049,25 @@ public class ProcessingApplet extends PApplet{
 				if(multipleReadsVisible){
 					int count = 0;
 					for(ArrayList<GraphColumn> sample:readsPlotToDraw){
-						count++;
-						colorMode(HSB, 5,100,50);
-						stroke(count,100,50,200);						
-						
+						colorMode(HSB, 40,100,50);
+						if(count%2==0){
+							stroke((count+20),100,50,150);
+						}else{
+							stroke(count,100,50,150);
+						}
+						count++;						
 						for(GraphColumn column:sample){
-							line(column.getScaledX(),shortReadPlotYStart,column.getScaledX(),shortReadPlotYStart-column.getScaledHeight());
-							
+							line(column.getScaledX(),readPlotYStart,column.getScaledX(),readPlotYStart-column.getScaledHeight());
+
 						}
 						colorMode(RGB,255);
 						stroke(0);
-					}	
+					}
+					
 				}else{
 					for(ArrayList<GraphColumn> sample:readsPlotToDraw){
 						for(GraphColumn column:sample){
-							line(column.getScaledX(),shortReadPlotYStart,column.getScaledX(),shortReadPlotYStart-column.getScaledHeight());
+							line(column.getScaledX(),readPlotYStart,column.getScaledX(),readPlotYStart-column.getScaledHeight());
 							
 						}
 					}
@@ -1082,7 +1125,8 @@ public class ProcessingApplet extends PApplet{
 			absoluteLengthOfGene=iAbsoluteLengthOfGene;
 			absoluteEndOfGene=iAbsoluteStartOfGene+iAbsoluteLengthOfGene-1;
 			isCodingStrand=strand;
-			customConstitutiveUnscaledPositions=identifyConstituitiveBases(temp);
+			customConstitutiveUnscaledPositions=Statistics.getConstituitiveBases(temp);
+																			
 			customListOfIsoforms=temp;
 		}		
 		isCodingStrand=strand;
@@ -1090,9 +1134,11 @@ public class ProcessingApplet extends PApplet{
 		//Identify the genomic coordinates which are constitutive for the all the isoforms
 		//IT WILL CRASH WHEN U ARE VIEWING 1 and load a need isoform
 		if(isoforms.size()==1){
-			tempConstitutiveUnscaledPositions=identifyConstituitiveBases(customListOfIsoforms);
+			tempConstitutiveUnscaledPositions=Statistics.getConstituitiveBases(customListOfIsoforms);
+																				
 		}else{
-			tempConstitutiveUnscaledPositions=identifyConstituitiveBases(isoforms);	
+			tempConstitutiveUnscaledPositions=Statistics.getConstituitiveBases(isoforms);
+																					
 		}
 		
 		//Make a new list of MRNA that will update the list of currently viewing isoforms
@@ -1123,15 +1169,17 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 	}
-	public synchronized void loadReads(String sampleName, ArrayList<SAMRecord> iSamRecords){
-		sampleReads = iSamRecords;
-		sampleReadsName = sampleName;
+	public synchronized void loadSingleReadSample(String sampleName, ArrayList<SAMRecord> iSamRecords){
+		currentListOfSamples.clear();
+		currentListOfSampleNames.clear();
+		currentListOfSamples.add(iSamRecords);		// Refresh the applet so that it knows what sample
+		currentListOfSampleNames.add(sampleName);	// you are viewing
 		
-		readsPlotToDraw.clear();
+		readsPlotToDraw.clear(); 		// Clear Existing Arrays
 		
 		HashMap<Integer, Integer> absoluteDensityMap = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, iSamRecords);
 		ArrayList<GraphColumn> samplePlot = new ArrayList<GraphColumn>(); 
-		fillScaledShortReadsPlot(samplePlot,absoluteDensityMap,currentlyViewingIsoforms);
+		fillScaledReadsPlot(samplePlot,absoluteDensityMap,currentlyViewingIsoforms);
 		readsPlotToDraw.add(samplePlot);
 		
 		if(!isCodingStrand){
@@ -1146,92 +1194,69 @@ public class ProcessingApplet extends PApplet{
 			ArrayList<ArrayList<SAMRecord> >listOfSamples,
 			ArrayList<Integer> listOfBamCounts){
 		
-		currentListOfSampleNames=listOfSampleNames;
-		currentListOfSamples=listOfSamples;
-		currentListOfBamCounts=listOfBamCounts;
-		
-		readsPlotToDraw.clear();
-		//These three arrays must be preserved in order
-		
-		//Iterate through the samples and find the max height for a single base
-		ArrayList<Double> maxCoverageForBaseInSample = new ArrayList<Double>();
-		ArrayList<HashMap<Integer,Integer>> absoluteDensityMaps = new ArrayList<HashMap<Integer,Integer>>();
-		
-		for(ArrayList<SAMRecord> samRecords :listOfSamples){
-			HashMap<Integer,Integer> tempHash = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, samRecords);
-			absoluteDensityMaps.add(tempHash);
-			double sampleMax = 0;
-			for (Integer i:tempHash.values()){
-				if(i.intValue()>sampleMax){
-					sampleMax=i.intValue();
+//		if(listOfSampleNames.size()==listOfSamples.size() &&
+//				listOfSamples.size()==listOfBamCounts.size()){
+			currentListOfSampleNames=listOfSampleNames;
+			currentListOfSamples=listOfSamples;
+			currentListOfBamCounts=listOfBamCounts;
+			
+			readsPlotToDraw.clear();
+			//These three arrays must be preserved in order
+			
+			//Iterate through the samples and find the max height for a single base
+			ArrayList<Double> maxCoverageForBaseInSample = new ArrayList<Double>();
+			ArrayList<HashMap<Integer,Integer>> absoluteDensityMaps = new ArrayList<HashMap<Integer,Integer>>();
+			
+			for(ArrayList<SAMRecord> samRecords :listOfSamples){
+				HashMap<Integer,Integer> tempHash = Statistics.getDensityMap(absoluteStartOfGene, absoluteEndOfGene, samRecords);
+				absoluteDensityMaps.add(tempHash);
+				double sampleMax = 0;
+				for (Integer i:tempHash.values()){
+					if(i.intValue()>sampleMax){
+						sampleMax=i.intValue();
+					}
 				}
+				maxCoverageForBaseInSample.add(sampleMax);
 			}
-			maxCoverageForBaseInSample.add(sampleMax);
-		}
-		
-		//Determine the largest ratio
-		double largestRatio=(float) 0;
-		for(int i=0;i<listOfSamples.size();i++){
-			double tempRatio = maxCoverageForBaseInSample.get(i)/listOfBamCounts.get(i);
-			if(tempRatio >largestRatio){
-				largestRatio=tempRatio;
-			} 
-		}
+			
+			//Determine the largest ratio
+			double largestRatio=(float) 0;
+			for(int i=0;i<listOfSamples.size();i++){
+				double tempRatio = maxCoverageForBaseInSample.get(i)/listOfBamCounts.get(i);
+				if(tempRatio >largestRatio){
+					largestRatio=tempRatio;
+				} 
+			}
 
-				
-		//It is acceptable to use the average of number of hits per pixel 
-		//because the absolute genomic coordinate will map to it anyways.
-		//Once the average is calculated it is acceptable to divide by 
-		//total number of reads in bam file as order does not change where each maps to.
-		
-		
-		//Scale each sample
-		
-		
-		for(int i=0;i<listOfSamples.size();i++){
-			ArrayList<GraphColumn> plot = new ArrayList<GraphColumn>();
-			fillScaledShortReadsPlot(plot, absoluteDensityMaps.get(i), currentlyViewingIsoforms);
-			for(GraphColumn graphColumn:plot){
-				double value = graphColumn.getAverageHits()/listOfBamCounts.get(i);
-				graphColumn.setScaledHeight((int)map((float)value,0,(float)largestRatio,0,80));
-				//If the graph is not coding, reverse it
-				if(!isCodingStrand){
-					graphColumn.setScaledX(reverse(graphColumn.getScaledX()));
 					
+			//It is acceptable to use the average of number of hits per pixel 
+			//because the absolute genomic coordinate will map to it anyways.
+			//Once the average is calculated it is acceptable to divide by 
+			//total number of reads in bam file as order does not change where each maps to.
+			
+			
+			//Scale each sample
+			
+			
+			for(int i=0;i<listOfSamples.size();i++){
+				ArrayList<GraphColumn> plot = new ArrayList<GraphColumn>();
+				fillScaledReadsPlot(plot, absoluteDensityMaps.get(i), currentlyViewingIsoforms);
+				for(GraphColumn graphColumn:plot){
+					double value = graphColumn.getAverageHits()/listOfBamCounts.get(i);
+					graphColumn.setScaledHeight((int)map((float)value,0,(float)largestRatio,0,readsPlotHeight));
+					//If the graph is not coding, reverse it
+					if(!isCodingStrand){
+						graphColumn.setScaledX(reverse(graphColumn.getScaledX()));
+						
+					}
 				}
+				readsPlotToDraw.add(plot);
 			}
-			readsPlotToDraw.add(plot);
-		}
-		
-		
-		
-//		//Scale sample1 plot 
-//		fillUncollapsed_ScaledShortReadsPlot(shortReads_Set_U1, sample1Map);
-//		for(GraphColumn graphColumn:shortReads_Set_U1.values()){
-//			float value = graphColumn.getAverageHits()/sample1Size;
-//			System.out.println(value);
-//			graphColumn.setScaledHeight(map(value,0,largestRatio,0,80));	
-//		}
-//		//Scale sample2 plot
-//		fillUncollapsed_ScaledShortReadsPlot(shortReads_Set_U2, sample2Map);
-//		for(GraphColumn graphColumn:shortReads_Set_U2.values()){
-//			float value = graphColumn.getAverageHits()/sample2Size;
-//			System.out.println(value);
-//			graphColumn.setScaledHeight(map(value,0,largestRatio,0,80));	
-//		}
-//		
-//		fillCollapsed_ScaledShortReadsPlot(shortReads_Set_C1, sample1Map,currentlyViewingIsoforms);
-//		for(GraphColumn graphColumn:shortReads_Set_C1.values()){
-//			float value = graphColumn.getAverageHits()/sample1Size;
-//			System.out.println(value);
-//			graphColumn.setScaledHeight(map(value,0,largestRatio,0,80));	
-//		}
-//		//Scale sample2 plot
-//		fillCollapsed_ScaledShortReadsPlot(shortReads_Set_C2, sample2Map,currentlyViewingIsoforms);
-//		for(GraphColumn graphColumn:shortReads_Set_U2.values()){
-//			float value = graphColumn.getAverageHits()/sample2Size;
-//			System.out.println(value);
-//			graphColumn.setScaledHeight(map(value,0,largestRatio,0,80));	
+//			return true;
+//		}else{
+//			System.err.println("The sizes of the three arrays are not equivalent. Please wait" +
+//					"untill all sam counts are available");
+//			return false;
 //		}
 	}
 	public synchronized void loadCurrentlyViewingIsoforms(){
@@ -1241,11 +1266,11 @@ public class ProcessingApplet extends PApplet{
 										isCodingStrand);
 	}
 	public void loadCurrentlyViewingShortReads() {
-		if(sampleReads!=null){
+		if(currentListOfSamples.size()!=0){
 			if(multipleReadsVisible){
 				loadMultipleSamples(currentListOfSampleNames, currentListOfSamples, currentListOfBamCounts);	
 			}else{
-				loadReads(sampleReadsName, sampleReads);
+				loadSingleReadSample(currentListOfSampleNames.get(0),currentListOfSamples.get(0));
 			}
 			
 			
@@ -1281,21 +1306,21 @@ public class ProcessingApplet extends PApplet{
 	}
 	public synchronized void animatedLoadReads(String sampleName,ArrayList<SAMRecord> newSampleReads,MRNA isoform) {
 		switch(view){
-			case UNCOLLAPSED_UNWEIGHTED: loadReads(sampleName,newSampleReads); break;//Do Nothing
+			case UNCOLLAPSED_UNWEIGHTED: loadSingleReadSample(sampleName,newSampleReads); break;//Do Nothing
 			case UNCOLLAPSED_WEIGHTED: uncollapsed_Weighted.animatedLoad(this,sampleName,newSampleReads,isoform);break;
-			case COLLAPSED_UNWEIGHTED: loadReads(sampleName,newSampleReads); break;//Do Nothing
+			case COLLAPSED_UNWEIGHTED: loadSingleReadSample(sampleName,newSampleReads); break;//Do Nothing
 			case COLLAPSED_WEIGHTED: collapsed_Weighted.animatedLoad(this, sampleName,newSampleReads, isoform);break;
 		}		
 		
 		
 		
 	}
-	public void changeMethod(int totalNumberOfReads,int method,int overhang) {
+	public void changeMethod(int totalNumberOfReads,int method,int overhang,int readLengths) {
 		
-		Statistics.setTotalNumberOfReads(sampleReads.get(0).getCigar().getReadLength());
-		
+		Statistics.setTotalNumberOfReads(readLengths);
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
 		Statistics.setOverhang(overhang);
+		
 		if(method==0){
 			gridLinesVisible=true;
 			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);
@@ -1310,34 +1335,7 @@ public class ProcessingApplet extends PApplet{
 		}
 	}
 	public double getRPKM(ArrayList<SAMRecord> samRecords,int totalNumberOfReads) {
-		return Statistics.getRPKM(samRecords, getConstitutiveIntervals(customConstitutiveUnscaledPositions),totalNumberOfReads);
-		
-	}
-	public ArrayList<Interval> getConstitutiveIntervals(ArrayList<Integer> inputArrayOfConstitutivePositions){
-		ArrayList<Interval> listOfIntervals = new ArrayList<Interval>();
-		int start = -1;
-		int currentLength=-1;
-		
-		//Iterate through all the constitutive unscaled positions and make intervals out of them
-		//if they are consecutive
-		for(Integer coord:inputArrayOfConstitutivePositions){
-			if(start== -1){
-				start = coord;
-				currentLength=1;
-			}else{
-				//Make sure it is consecutive
-				if(coord!=start+currentLength){
-					listOfIntervals.add(new Interval(start, currentLength));
-					start = coord;
-					currentLength=1;
-				}else{
-					currentLength++;
-					
-				}
-			}
-		}
-		listOfIntervals.add(new Interval(start, currentLength));
-		return listOfIntervals;
+		return Statistics.getRPKM(samRecords, Statistics.getConstitutiveIntervals(customConstitutiveUnscaledPositions),totalNumberOfReads);
 		
 	}
 	private ArrayList<Line> getSpliceLines(ArrayList<Rectangle_Unweighted> exonsToSort,int yPosition){
@@ -1431,46 +1429,6 @@ public class ProcessingApplet extends PApplet{
 	}
 	private int reverse(int position){
 		return (graphXEnd-position)+graphXStart;
-	}
-	/**
-	 * Returns an ArrayList of genomic coordinates which are constitutive.
-	 * 
-	 * This method works by plotting all the coordinates for each MRNA. It then iteratively
-	 * goes through each coordinate and determines if the number of "hits" for the coordinate
-	 * equal the number of MRNAs in the list
-	 * 
-	 * @param mrnaList is a Collection of MRNA.
-	 * 
-	 * @return An ArrayList of constitutive genomic coordinates are returned.
-	 */
-	private ArrayList<Integer> identifyConstituitiveBases(Collection<MRNA> mrnaList){
-		HashMap<Integer,Integer> allPositions = new HashMap<Integer,Integer>();
-		for(int i = absoluteStartOfGene;i<=(absoluteStartOfGene+absoluteLengthOfGene-1);i++){
-			allPositions.put(i,0);
-		}
-		//For all MRNA
-		for(MRNA mrna:mrnaList){
-			//For All Exons
-			for(Exon exon:mrna.getExons().values()){
-				//For all positions in Exon
-				for(int y=exon.getStart();y<=exon.getEnd();y++){
-					//Take a tally of how many exons exist for a certain base
-					int prev = allPositions.get(y);
-					prev++;
-					allPositions.put(y,prev);
-				}
-			}
-		}
-		ArrayList<Integer> newConstitutiveUnscaledPositions = new ArrayList<Integer>();
-		if(mrnaList.size()>1){
-			for(int i = absoluteStartOfGene;i<=absoluteEndOfGene;i++){
-				//Those sites with a tally equal to the size of the MRNA list are constitutive
-				if(allPositions.get(i)==mrnaList.size()){
-					newConstitutiveUnscaledPositions.add(i);
-				}
-			}	
-		}
-		return newConstitutiveUnscaledPositions;
 	}
 	private int scaleAbsoluteCoord_Uncollapsed(int inCoord){
 		return mapToInt(inCoord,absoluteStartOfGene,absoluteEndOfGene,
@@ -1596,7 +1554,7 @@ public class ProcessingApplet extends PApplet{
 		}
 		return listOfIntrons;
 	}
-	private synchronized void fillScaledShortReadsPlot(ArrayList<GraphColumn> readsSample,
+	private synchronized void fillScaledReadsPlot(ArrayList<GraphColumn> readsSample,
 				HashMap<Integer,Integer> densityMap,ArrayList<MRNA> isoforms){
 			
 			//Get a list of the large consitutitive introns
@@ -1631,6 +1589,10 @@ public class ProcessingApplet extends PApplet{
 					numberOfBases=1;
 					currentSum=densityMap.get(i);
 					prevPixel=mappedPixel;
+				}else if(i==absoluteEndOfGene){
+					frameAbsoluteEnd=i;
+					numberOfBases++;
+					readsSample.add(new GraphColumn(prevPixel, (float)currentSum/numberOfBases, frameAbsoluteStart, frameAbsoluteEnd));
 				}else if(mappedPixel!= prevPixel){
 					float average = (float)currentSum/numberOfBases;
 					if(average>maxAverage){
@@ -1642,11 +1604,7 @@ public class ProcessingApplet extends PApplet{
 					numberOfBases=1;
 					currentSum=densityMap.get(i);
 					frameAbsoluteStart=i;
-					frameAbsoluteEnd=i;
-				}else if(i==absoluteEndOfGene){
-					frameAbsoluteEnd=i;
-					numberOfBases++;
-					readsSample.add(new GraphColumn(prevPixel, (float)currentSum/numberOfBases, frameAbsoluteStart, frameAbsoluteEnd));
+					frameAbsoluteEnd=i;	
 				}else{	
 					currentSum+=densityMap.get(i);
 					frameAbsoluteEnd=i;
@@ -1655,7 +1613,7 @@ public class ProcessingApplet extends PApplet{
 	//			System.out.println(i + "----"  + iAbsoluteDensity.get(i));
 			}
 			for(GraphColumn column:readsSample){
-				column.setScaledHeight((int)map((float)column.getAverageHits(),0,maxAverage,0,80));
+				column.setScaledHeight((int)map((float)column.getAverageHits(),0,maxAverage,0,readsPlotHeight));
 			}
 		}
 	public synchronized void printPDF(String string) {

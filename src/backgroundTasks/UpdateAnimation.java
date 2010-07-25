@@ -1,7 +1,7 @@
 package backgroundTasks;
 
 import genomeBrowser.ProcessingApplet;
-import genomeBrowser.ShortRead;
+import genomeBrowser.Read;
 import genomeBrowser.Statistics;
 import gffParser.MRNA;
 
@@ -14,11 +14,11 @@ import processing.core.PApplet;
 
 public class UpdateAnimation implements Runnable{
 	private List<Rectangle_Weighted> weightedIsoforms;
-	private ArrayList<ShortRead> compatibleShortReads;
+	private ArrayList<Read> compatibleShortReads;
 	private ProcessingApplet parent;
 	private MRNA isoform;
 	
-	public UpdateAnimation(ProcessingApplet processingApplet,MRNA iIsoform,ArrayList<ShortRead> iCompatibleShortReads,
+	public UpdateAnimation(ProcessingApplet processingApplet,MRNA iIsoform,ArrayList<Read> iCompatibleShortReads,
 			List<Rectangle_Weighted> weightedIsoforms2) {
 		compatibleShortReads=iCompatibleShortReads;
 		weightedIsoforms=weightedIsoforms2;

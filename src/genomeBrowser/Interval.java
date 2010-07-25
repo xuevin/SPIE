@@ -23,4 +23,11 @@ public class Interval {
 	public int getLength(){
 		return length;
 	}
+	public boolean contains(int coord){
+		if(coord>=startCoord && coord<=endCoord){
+			return true;
+		}else{
+			return false;
+		}
+	}
 }

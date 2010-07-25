@@ -93,6 +93,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JMenuItem saveMenuItemPDF;
 	private JFrame popupSampleChooser;
 	private DefaultListModel listOfBamSamples;
+	private JCheckBox multipleReadsVisibleCheckbox;
 	
 	//Constructor
 	public JSpliceViewGUI(){
@@ -322,6 +323,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		overhangSpinner.setMaximumSize(new Dimension(60,30));
 		overhangSpinner.setEnabled(false);
 		
+		//multipleReadsVisibleCheckBox
+		multipleReadsVisibleCheckbox = new JCheckBox("View Mutliple Short Reads");
+		multipleReadsVisibleCheckbox.setEnabled(false);
+		multipleReadsVisibleCheckbox.addActionListener(this);
+		
+		
 		//ControlBox
 		controlBox = new JPanel();
 		controlBox.setPreferredSize(new Dimension(200,getHeight()));
@@ -333,6 +340,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		controlBox.add(isCodingCheckBox);
 		controlBox.add(constitutiveRegionsVisibleCheckBox);
 		controlBox.add(readCheckBox);
+		controlBox.add(multipleReadsVisibleCheckbox);
 		controlBox.add(new JLabel("Choose a Gene"));
 		controlBox.add(geneChooser);
 		controlBox.add(new JLabel("Choose BAM Sample"));
@@ -464,8 +472,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			applet.loadCurrentlyViewingIsoforms();
 			applet.loadCurrentlyViewingShortReads();
 		}else if(e.getSource()==constitutiveRegionsVisibleCheckBox){
-			applet.setConstitutiveRegionsVisible(constitutiveRegionsVisibleCheckBox.isSelected());
-			
+			applet.setConstitutiveRegionsVisible(constitutiveRegionsVisibleCheckBox.isSelected());	
+		}else if(e.getSource()==multipleReadsVisibleCheckbox){
+			applet.setMultipleReadsVisible(multipleReadsVisibleCheckbox.isSelected());
 		}
 	}
 	private void sampleChooserAction() {
@@ -499,8 +508,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 							listOfCounts.add(bamTo_FileCount.get(nameTo_BamFile.get(string)));	
 						}
 						applet.loadMultipleSamples(listOfNames,listOfSamples,listOfCounts);
+						applet.setMultipleReadsVisible(true);
+						multipleReadsVisibleCheckbox.setSelected(true);
+						multipleReadsVisibleCheckbox.setEnabled(true);
+						
 					}else if (jListOfSamples.getSelectedIndices().length==1){
-						applet.loadReads(
+						applet.loadSingleReadSample(
 								(String)jListOfSamples.getSelectedValue(),
 								getShortReadMatch(gene,nameTo_BamFile.get(jListOfSamples.getSelectedValue()))); 
 								
@@ -548,24 +561,37 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
         }
 	}
 	private void changeMethod() {
-		int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
-		try{
-			int readCount = bamTo_FileCount.get(getCurrentlySelectedReader());
-			applet.changeMethod(readCount,methodComboBox.getSelectedIndex(),overhang);
-			Gene gene = getCurrentlySelectedGene();
-			SAMFileReader samReader = getCurrentlySelectedReader(); 
-			
-			if(samReader!=null&&multiIsoformChooser.getSelectedIndex()>1){
-				applet.animatedLoadReads(
-						bamTo_FileName.get(samReader),
-						getShortReadMatch(gene, samReader),
-						gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
-			}
-			System.out.println("Request Made to Change Method");
-		}catch(NullPointerException e){
-			JOptionPane.showMessageDialog(this,"Normalization Failed\n Please wait until the Short Read count has finished.","Error",
-					JOptionPane.ERROR_MESSAGE);
-		}	
+		int overhang = getCurrentOverhang();
+		int readCount = 0;
+		if(methodComboBox.getSelectedIndex()!=2){
+			//Method 2 is the only one which is normalized
+		}else{
+			try{
+				readCount = bamTo_FileCount.get(getCurrentlySelectedReader());
+			}catch(NullPointerException e){
+				JOptionPane.showMessageDialog(this,"Normalization Failed\n Please wait until the Short Read count has finished.","Error",
+						JOptionPane.ERROR_MESSAGE);
+				return;
+			}	
+		}
+		Gene gene = getCurrentlySelectedGene();
+		SAMFileReader samReader = getCurrentlySelectedReader();
+		int readLength = getReadLengthForSample(samReader);
+		applet.changeMethod(readCount,
+							methodComboBox.getSelectedIndex(),
+							overhang,
+							readLength);
+		 
+		if(samReader!=null&&multiIsoformChooser.getSelectedIndex()>1){
+			applet.animatedLoadReads(
+					bamTo_FileName.get(samReader),
+					getShortReadMatch(gene, samReader),
+					gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
+		}
+		System.out.println("Request Made to Change Method");
+	}
+	private int getCurrentOverhang() {
+		return Integer.parseInt(overhangSpinner.getModel().getValue().toString());
 	}
 	private void shortReadChooserAction() {
 		if(filesLoaded() &&  readChooser.isEnabled()){
@@ -584,7 +610,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 						getShortReadMatch(gene, samReader),
 						gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
 			}else{
-				applet.loadReads(bamTo_FileName.get(samReader),getShortReadMatch(gene, samReader));
+				applet.loadSingleReadSample(bamTo_FileName.get(samReader),getShortReadMatch(gene, samReader));
 			}
 		}
 		
@@ -603,7 +629,10 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			if(getCurrentlySelectedMethod()==2){
 				int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
 				SAMFileReader samReader = getCurrentlySelectedReader();
-				applet.changeMethod(bamTo_FileCount.get(samReader),methodComboBox.getSelectedIndex(),overhang);
+				int readLength = getReadLengthForSample(samReader);
+				applet.changeMethod(bamTo_FileCount.get(samReader),
+									methodComboBox.getSelectedIndex(),
+									overhang,readLength);
 				Gene gene = getCurrentlySelectedGene();
 				 
 				if(samReader!=null&&multiIsoformChooser.getSelectedIndex()>1 && multiIsoformChooser.getSelectedIndices().length==1){
@@ -637,7 +666,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		applet.clearConstitutive();
 		applet.loadNewArrayOfIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
 		if(filesLoaded()){
-			applet.loadReads(bamTo_FileName.get(getCurrentlySelectedReader()),getShortReadMatch(gene, getCurrentlySelectedReader()));
+			applet.loadSingleReadSample(bamTo_FileName.get(getCurrentlySelectedReader()),getShortReadMatch(gene, getCurrentlySelectedReader()));
 		}
 		isCodingCheckBox.setSelected(true);
 	}
@@ -691,7 +720,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 						
 						
 						
-						actionWhenBothFilesAreLoaded();
+						actionWhenBothFilesAreNewlyLoaded();
 						SAMFileReader clone = new SAMFileReader(inputBamFile,inputBamIndex);
 						clone.setValidationStringency(SAMFileReader.ValidationStringency.SILENT);
 						new Thread(new CountReadsInBAM(samRecords,clone,name,this, bamTo_FileCount,rpkmBox)).start();
@@ -760,7 +789,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				spliceLinesCheckBox.setEnabled(true);
 				
 				applet.loadNewArrayOfIsoforms(gene.getMRNA().values(),gene.getStart(),gene.getLength(),gene.getStrand());
-				actionWhenBothFilesAreLoaded();			
+				actionWhenBothFilesAreNewlyLoaded();			
 			}
 		
 			
@@ -779,7 +808,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			applet.loadNewArrayOfIsoforms(gene.getMRNA().values(), gene.getStart(), gene.getLength(),gene.getStrand());
 			if(filesLoaded()){	
 				SAMFileReader samRecords = getCurrentlySelectedReader();
-				applet.loadReads(bamTo_FileName.get(samRecords),getShortReadMatch(gene,samRecords));
+				applet.loadSingleReadSample(bamTo_FileName.get(samRecords),getShortReadMatch(gene,samRecords));
 			}
 		}
 	}
@@ -806,7 +835,19 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			return false;
 		}
 	}
-	private void actionWhenBothFilesAreLoaded(){
+	private int getReadLengthForSample(SAMFileReader reader){
+		CloseableIterator<SAMRecord> itr = reader.iterator();
+		
+		int readLength = 0;
+		while(itr.hasNext()){
+			readLength = itr.next().getCigar().getReadLength();
+			break;
+		}
+		itr.close();
+		return readLength;
+	
+	}
+	private void actionWhenBothFilesAreNewlyLoaded(){
 		if(filesLoaded()){
 			
 			readCheckBox.setEnabled(true);
@@ -817,16 +858,21 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			
 			Gene gene = getCurrentlySelectedGene();
 			SAMFileReader samRecords = getCurrentlySelectedReader();
+			int readLength = getReadLengthForSample(samRecords);
 			
-			//Comparing Isoforms among each other
+			applet.changeMethod(0,0,getCurrentOverhang(),readLength);
+			methodComboBox.setSelectedIndex(0);
+			
+			//Comparing BAM samples
 			if(multiIsoformChooser.getSelectedIndex()>1 && multiIsoformChooser.getSelectedIndices().length==1){
 				applet.animatedLoadReads(
 						bamTo_FileName.get(samRecords),
 						getShortReadMatch(gene, samRecords),
 						gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));
 			}else{
-				applet.loadReads(bamTo_FileName.get(samRecords),getShortReadMatch(gene, samRecords));
+				applet.loadSingleReadSample(bamTo_FileName.get(samRecords),getShortReadMatch(gene, samRecords));
 			}
+			
 			applet.setReadsVisible(true);
 			scaleSlider.setEnabled(true);
 			overhangSpinner.setEnabled(true);
@@ -911,8 +957,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	}
 	public void mouseClicked(MouseEvent e) {
 		if(e.isMetaDown() && multiIsoformChooser.isEnabled() &&
-				uncollapsed_Unweighted.isSelected() ||
-				collapsed_Unweighted.isSelected()){
+				(uncollapsed_Unweighted.isSelected() ||
+				collapsed_Unweighted.isSelected())){
 			multiIsoformChooser.setSelectedIndex(1);
 		}
 		menuBar.requestFocusInWindow();

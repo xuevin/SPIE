@@ -21,11 +21,13 @@ public class CountReadsInBAM implements Runnable{
 	private JPanel panelToUpdate;
 	private JLabel rpkm;
 	private JSpliceViewGUI parent;
+	private SAMFileReader clone;
 	
 	
 	
-	public CountReadsInBAM(SAMFileReader input,SAMFileReader clone,String iName,
+	public CountReadsInBAM(SAMFileReader input,SAMFileReader iClone,String iName,
 			JSpliceViewGUI iParent,HashMap<SAMFileReader, Integer> bamFileCount,JPanel iPanelToUpdate){ 
+		clone = iClone;
 		itr = clone.iterator();
 		panelToUpdate=iPanelToUpdate;
 		hashMapToFill=bamFileCount;
@@ -50,5 +52,6 @@ public class CountReadsInBAM implements Runnable{
 		labelToUpdate.setText(name+": "+count);
 		rpkm.setText("\tRPKM: "+ parent.getRPKM(samFile, count));
 		hashMapToFill.put(samFile, count);
+		clone.close();
 	}
 }

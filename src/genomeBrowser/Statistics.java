@@ -5,6 +5,7 @@ import gffParser.MRNA;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -74,10 +75,9 @@ public class Statistics {
 	 * 
 	 * @return the weight
 	 */
-	public static double getWeightOfExon(Exon exon, ArrayList<ShortRead> compatibleShortReads,Boolean endExon){
+	public static double getWeightOfExon(Exon exon, ArrayList<Read> compatibleShortReads,Boolean endExon){
 		int absoluteStart = exon.getStart();
 		int absoluteEnd = exon.getEnd();
-		System.out.println(method.toString());
 		switch(method){
 			//Average Coverage Per Exon	
 			case COVERAGEPEREXON: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);
@@ -109,10 +109,10 @@ public class Statistics {
 	 */
 	private static double getAllReads_Per_TotalPossiblePositions(
 			int absoluteStart, int absoluteEnd,
-			ArrayList<ShortRead> compatibleShortReads,boolean endExon) {
+			ArrayList<Read> compatibleShortReads,boolean endExon) {
 		int count=0;
 		
-		for(ShortRead shortRead:compatibleShortReads){
+		for(Read shortRead:compatibleShortReads){
 			for(Exon exon :shortRead.getSetOfExons()){
 				if(exon.getStart()==absoluteStart && exon.getEnd()==absoluteEnd){
 					count++;
@@ -140,7 +140,7 @@ public class Statistics {
 	 * 
 	 * @return the sum of reads per base divided by total number of bases
 	 */
-	public static double getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static double getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
 		int sum =0;
@@ -160,10 +160,10 @@ public class Statistics {
 	 * 
 	 * @return the number of reads for the exon divided by the length of the exon
 	 */
-	public static double getBodyReads_Per_ExonLength(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static double getBodyReads_Per_ExonLength(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
 		int length = (absoluteEnd-absoluteStart+1);
 		int count=0;
-		for(ShortRead shortRead:compatibleShortReads){
+		for(Read shortRead:compatibleShortReads){
 			if(		shortRead.getStart()>=absoluteStart &&
 					shortRead.getEnd()<=absoluteEnd &&
 					shortRead.isBodyRead()){
@@ -173,7 +173,7 @@ public class Statistics {
 		}
 		return (double)count/(length);
 	}
-	public static double getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads){
+	public static double getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
 		switch(method){
 			case COVERAGEPEREXON:return getStandardDeviation_ReadsPerBase(absoluteStart, absoluteEnd,compatibleShortReads);
 			case RPK:return 0;
@@ -193,7 +193,7 @@ public class Statistics {
 	 * 
 	 * @return the standard deviation_ reads per base
 	 */
-	public static double getStandardDeviation_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<ShortRead> compatibleShortReads) {
+	public static double getStandardDeviation_ReadsPerBase(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads) {
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
 		double mean = getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);	
@@ -213,8 +213,8 @@ public class Statistics {
 	 * 
 	 * @return An ArrayList of compatible ShortReads
 	 */
-	public static ArrayList<ShortRead> getCompatibleShortReads(MRNA isoform, ArrayList<SAMRecord> iSAMRecords){ 
-		ArrayList<ShortRead> arrayOfCompatibleShortReads = new ArrayList<ShortRead>();
+	public static ArrayList<Read> getCompatibleReads(MRNA isoform, ArrayList<SAMRecord> iSAMRecords){ 
+		ArrayList<Read> arrayOfCompatibleShortReads = new ArrayList<Read>();
 		
 		for(SAMRecord samRecord:iSAMRecords){
 			//** CIGAR PARSING
@@ -236,7 +236,7 @@ public class Statistics {
 				}	
 			}
 //			System.out.print(count++ +" "+ samRecord.getCigarString()+" ");
-			ShortRead temp =getShortReadIfCompatible(samRecord,samRecordIntervals, isoform.getExons().values());  
+			Read temp =getShortReadIfCompatible(samRecord,samRecordIntervals, isoform.getExons().values());  
 			if(temp!=null){
 				arrayOfCompatibleShortReads.add(temp);
 			}else{
@@ -258,7 +258,7 @@ public class Statistics {
 	 */
 	public static ArrayList<SAMRecord> getCompatibleSamRecords(MRNA isoform, ArrayList<SAMRecord> iSamRecords){
 		ArrayList<SAMRecord> compatibleSAMRecords = new ArrayList<SAMRecord>();
-		for(ShortRead shortRead:getCompatibleShortReads(isoform, iSamRecords)){
+		for(Read shortRead:getCompatibleReads(isoform, iSamRecords)){
 			compatibleSAMRecords.add(shortRead.getSAMRecord());	
 		}
 		return compatibleSAMRecords;
@@ -271,9 +271,9 @@ public class Statistics {
 	 * 
 	 * @return the ArrayList of SamRecords
 	 */
-	public static ArrayList<SAMRecord> convertShortReadsToSamRecords(ArrayList<ShortRead> iShortReads){
+	public static ArrayList<SAMRecord> convertShortReadsToSamRecords(ArrayList<Read> iShortReads){
 		ArrayList<SAMRecord> samRecords = new ArrayList<SAMRecord>();
-		for(ShortRead shortRead:iShortReads){
+		for(Read shortRead:iShortReads){
 			samRecords.add(shortRead.getSAMRecord());	
 		}
 		return samRecords;
@@ -295,13 +295,13 @@ public class Statistics {
 	 * 
 	 * @return a new ShortRead is returned if it is compatible. If it is not, null is returned.
 	 */
-	private static ShortRead getShortReadIfCompatible(SAMRecord samRecord,ArrayList<Interval> samInterval,Collection<Exon> exonList){
+	private static Read getShortReadIfCompatible(SAMRecord samRecord,ArrayList<Interval> samInterval,Collection<Exon> exonList){
 		
 		if(samInterval.size()==0){
 			System.err.println("samInterval Was Empty");
 			return null;
 		}
-		ShortRead newShortRead = new ShortRead(samRecord,samInterval);
+		Read newShortRead = new Read(samRecord,samInterval);
 		
 		for(int i =0;i<samInterval.size();i++){
 			if(i==0){
@@ -467,9 +467,9 @@ public class Statistics {
 	 */
 	public static int getNumberOfBodyReads(MRNA isoform,int absoluteStart, int absoluteEnd,
 			ArrayList<SAMRecord> iSAMRecords){
-		ArrayList<ShortRead> compatibleShortReads= getCompatibleShortReads(isoform, iSAMRecords);
+		ArrayList<Read> compatibleShortReads= getCompatibleReads(isoform, iSAMRecords);
 		int count=0;
-		for(ShortRead shortRead:compatibleShortReads){
+		for(Read shortRead:compatibleShortReads){
 			if(shortRead.isBodyRead()){
 				if(shortRead.getSetOfExons().size()!=1){
 					System.err.println("FATAL ERROR IN CALCULATIONS");
@@ -496,9 +496,9 @@ public class Statistics {
 	 */
 	public static int getNumberOfJunctionReads(MRNA isoform,int absoluteStart, int absoluteEnd,
 			ArrayList<SAMRecord> iSAMRecords){
-		ArrayList<ShortRead> compatibleShortReads= getCompatibleShortReads(isoform, iSAMRecords);
+		ArrayList<Read> compatibleShortReads= getCompatibleReads(isoform, iSAMRecords);
 		int count=0;
-		for(ShortRead shortRead:compatibleShortReads){
+		for(Read shortRead:compatibleShortReads){
 			if(shortRead.isJunctionRead()){
 				for(Exon exon :shortRead.getSetOfExons()){
 					if(exon.getStart()==absoluteStart && exon.getEnd()==absoluteEnd){
@@ -558,6 +558,90 @@ public class Statistics {
 		denominator=denominator/1000;
 		//System.out.println((count/denominator)/((double)totalNumberOfReads/1000000));
 		return (count/denominator)/((double)totalNumberOfReads/1000000);
+	}
+	public static ArrayList<Interval> getConstitutiveIntervals(ArrayList<Integer> inputArrayOfConstitutivePositions){
+		
+		ArrayList<Interval> listOfIntervals = new ArrayList<Interval>();
+		int start = -1;
+		int currentLength=-1;
+		//Sort First
+		
+		//Iterate through all the constitutive unscaled positions and make intervals out of them
+		//if they are consecutive
+		for(Integer coord:inputArrayOfConstitutivePositions){
+			if(start== -1){
+				start = coord;
+				currentLength=1;
+			}else{
+				//Make sure it is consecutive
+				if(coord!=start+currentLength){
+					listOfIntervals.add(new Interval(start, currentLength));
+					start = coord;
+					currentLength=1;
+				}else{
+					currentLength++;
+					
+				}
+			}
+		}
+		listOfIntervals.add(new Interval(start, currentLength));
+		return listOfIntervals;
+		
+	}
+	/**
+	 * Returns an ArrayList of genomic coordinates which are constitutive.
+	 * 
+	 * This method works by plotting all the coordinates for each MRNA. It then iteratively
+	 * goes through each coordinate and determines if the number of "hits" for the coordinate
+	 * equal the number of MRNAs in the list
+	 * 
+	 * @param mrnaList is a Collection of MRNA.
+	 * 
+	 * @return An ArrayList of constitutive genomic coordinates are returned.
+	 */
+	public static ArrayList<Integer> getConstituitiveBases(Collection<MRNA> mrnaList){
+		
+		
+		
+		HashMap<Integer,Integer> basesWithHits = new HashMap<Integer,Integer>();
+//		for(int i = absoluteStartOfGene;i<=(absoluteStartOfGene+absoluteLengthOfGene-1);i++){
+//			basesWithHits.put(i,0);
+//		}
+		//For all MRNA
+		for(MRNA mrna:mrnaList){
+			//For All Exons
+			for(Exon exon:mrna.getExons().values()){
+				//For all positions in Exon
+				for(int y=exon.getStart();y<=exon.getEnd();y++){
+					//Take a tally of how many exons exist for a certain base
+					if(basesWithHits.get(y)==null){
+						basesWithHits.put(y, 1);
+					}else{
+						int prev = basesWithHits.get(y);
+						prev++;
+						basesWithHits.put(y,prev);	
+					}
+				}
+			}
+		}
+		ArrayList<Integer> newConstitutiveUnscaledPositions = new ArrayList<Integer>();
+		if(mrnaList.size()>1){
+			//maintains order
+//			for(int i =absoluteStartOfGene;i<=absoluteEndOfGene;i++){
+//				if(basesWithHits.get(i)==mrnaList.size()){
+//					newConstitutiveUnscaledPositions.add(i);	
+//				}
+//				
+//			}
+			for(Integer genomicPosition:basesWithHits.keySet()){
+				//Those sites with a tally equal to the size of the MRNA list are constitutive
+				if(basesWithHits.get(genomicPosition)==mrnaList.size()){
+					newConstitutiveUnscaledPositions.add(genomicPosition);
+				}
+			}
+			Collections.sort(newConstitutiveUnscaledPositions);
+		}
+		return newConstitutiveUnscaledPositions;
 	}
 
 }
