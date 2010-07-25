@@ -1,4 +1,4 @@
-package genomeBrowser;
+package vito;
 
 import javax.swing.JFrame;
 
@@ -12,7 +12,7 @@ public class Main {
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		JSpliceViewGUI panel = new JSpliceViewGUI();
 		frame.add(panel);
-		
+		frame.setJMenuBar(panel.getJMenuBar());
 		//Start the JFrame
 		frame.pack();
 		frame.setVisible(true);

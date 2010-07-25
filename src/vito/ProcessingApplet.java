@@ -1,7 +1,5 @@
-package genomeBrowser;
+package vito;
 
-import genomeBrowser.Read;
-import genomeBrowser.Statistics;
 
 import gffParser.CDS;
 import gffParser.Exon;
@@ -30,6 +28,8 @@ import net.sf.samtools.SAMRecord;
 
 import processing.core.*;
 import processing.pdf.*;
+import vito.Read;
+import vito.Statistics;
 
 public class ProcessingApplet extends PApplet{
 	public enum View{

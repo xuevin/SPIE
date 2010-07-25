@@ -1,4 +1,4 @@
-package genomeBrowser;
+package vito;
 
 public class Interval {
 	

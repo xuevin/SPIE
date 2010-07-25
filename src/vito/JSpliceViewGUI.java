@@ -1,4 +1,4 @@
-package genomeBrowser;
+package vito;
 
 import gffParser.GFF3Parser;
 import gffParser.Gene;
@@ -391,7 +391,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		
 		
 		
-		add(menuBar,BorderLayout.NORTH);
+		//add(menuBar,BorderLayout.NORTH);
 		add(applet,BorderLayout.CENTER);
 		add(tabbedPane,BorderLayout.EAST);
 		//applet
@@ -576,7 +576,11 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		}
 		Gene gene = getCurrentlySelectedGene();
 		SAMFileReader samReader = getCurrentlySelectedReader();
+		if(samReader ==null){
+			return;
+		}
 		int readLength = getReadLengthForSample(samReader);
+		
 		applet.changeMethod(readCount,
 							methodComboBox.getSelectedIndex(),
 							overhang,
@@ -897,7 +901,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		if(listOfSamRecords.get(readChooser.getSelectedIndex())!=null){
 			return listOfSamRecords.get(readChooser.getSelectedIndex());	
 		}else{
-			System.err.println("There was an error when trying to get the currently selected short read");
+			System.err.println("There was an error when trying to get the currently selected SamReader");
 			return null;
 		}
 	}
@@ -978,6 +982,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	public void mouseExited(MouseEvent e) {
 		// TODO Auto-generated method stub
 		
+	}
+	public JMenuBar getJMenuBar() {
+		return menuBar;
 	}
 	
 }

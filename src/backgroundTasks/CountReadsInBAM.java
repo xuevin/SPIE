@@ -1,12 +1,13 @@
 package backgroundTasks;
 
-import genomeBrowser.JSpliceViewGUI;
-import genomeBrowser.ProcessingApplet;
-import genomeBrowser.Statistics;
 
 import java.util.HashMap;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+
+import vito.JSpliceViewGUI;
+import vito.ProcessingApplet;
+import vito.Statistics;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;

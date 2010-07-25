@@ -1,4 +1,4 @@
-package genomeBrowser;
+package vito;
 
 import java.util.Comparator;
 

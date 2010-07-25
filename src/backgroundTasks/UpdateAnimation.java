@@ -1,8 +1,5 @@
 package backgroundTasks;
 
-import genomeBrowser.ProcessingApplet;
-import genomeBrowser.Read;
-import genomeBrowser.Statistics;
 import gffParser.MRNA;
 
 import java.util.ArrayList;
@@ -11,6 +8,9 @@ import java.util.List;
 import drawableObjects.Rectangle_Weighted;
 
 import processing.core.PApplet;
+import vito.ProcessingApplet;
+import vito.Read;
+import vito.Statistics;
 
 public class UpdateAnimation implements Runnable{
 	private List<Rectangle_Weighted> weightedIsoforms;

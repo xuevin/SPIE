@@ -1,4 +1,4 @@
-package genomeBrowser;
+package vito;
 
 import gffParser.Exon;
 import gffParser.MRNA;
