@@ -12,7 +12,10 @@ import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -94,6 +97,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JFrame popupSampleChooser;
 	private DefaultListModel listOfBamSamples;
 	private JCheckBox multipleReadsVisibleCheckbox;
+	private JMenuItem loadDistributionMenuItem;
 	
 	//Constructor
 	public JSpliceViewGUI(){
@@ -131,6 +135,10 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		saveMenuItemPDF.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, ActionEvent.CTRL_MASK));
 		saveMenuItemPDF.addActionListener(this);
 		
+		//MenuItem for loading BAM
+		loadDistributionMenuItem = new JMenuItem("Load Distribution");
+		loadDistributionMenuItem.addActionListener(this);
+		
 		//MenuItem for Quiting
 		quit = new JMenuItem("Quit");
 		quit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Q, ActionEvent.CTRL_MASK));
@@ -149,6 +157,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		file.add(loadBAMMenuItem);
 		file.add(saveMenuItemPNG);
 		file.add(saveMenuItemPDF);
+		file.add(loadDistributionMenuItem);
 		file.add(new JSeparator());
 		file.add(quit);
 		
@@ -290,7 +299,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		methodComboBox.setPreferredSize((new Dimension(200,50)));
 		methodComboBox.setMaximumSize(new Dimension(200,50));
 		methodComboBox.addItem("Coverage Per Exon");
-		methodComboBox.addItem("SR / Exon");
+		methodComboBox.addItem("RPK");
 		methodComboBox.addItem("RPKM");
 		methodComboBox.setAlignmentX(LEFT_ALIGNMENT);
 		methodComboBox.addActionListener(this);
@@ -475,7 +484,32 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			applet.setConstitutiveRegionsVisible(constitutiveRegionsVisibleCheckBox.isSelected());	
 		}else if(e.getSource()==multipleReadsVisibleCheckbox){
 			applet.setMultipleReadsVisible(multipleReadsVisibleCheckbox.isSelected());
+		}else if(e.getSource()==loadDistributionMenuItem){
+			loadDistributionAction();
 		}
+	}
+	private void loadDistributionAction() {
+		int returnVal = fileChooser.showOpenDialog(JSpliceViewGUI.this);
+		if (returnVal == JFileChooser.APPROVE_OPTION){
+			
+			File file = fileChooser.getSelectedFile();
+			if(file.getName().endsWith(".vito")){
+				try{
+					ArrayList<Integer> distributionArrayList = new ArrayList<Integer>();
+					FileInputStream fis = new FileInputStream(file);
+					BufferedInputStream bis = new BufferedInputStream(fis);
+					ObjectInputStream ois = new ObjectInputStream(bis);
+					distributionArrayList = (ArrayList<Integer>)ois.readObject();
+					ois.close();
+					applet.loadDistribution(distributionArrayList);
+				}catch(Exception e){
+					e.printStackTrace();
+				}	
+			}
+		
+			
+		}
+		
 	}
 	private void sampleChooserAction() {
 		if(popupSampleChooser!=null){
@@ -592,7 +626,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					getShortReadMatch(gene, samReader),
 					gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
 		}
-		System.out.println("Request Made to Change Method");
 	}
 	private int getCurrentOverhang() {
 		return Integer.parseInt(overhangSpinner.getModel().getValue().toString());

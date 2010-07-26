@@ -36,7 +36,7 @@ public class Statistics {
 	private static Method method= Method.COVERAGEPEREXON;
 	
 	/** The short read length.(Default is 35) */ 
-	private static int shortReadLength = 35;
+	private static int readLength = 35;
 	
 	protected Statistics(){
 		//This is not ment to be instantiated
@@ -47,6 +47,7 @@ public class Statistics {
 	 * @param i the new method
 	 */
 	public static void setMethod(Method i){
+		System.out.println("Request Made to Change Method");
 		method =i;
 	}
 	/**
@@ -55,6 +56,7 @@ public class Statistics {
 	 * @param i the new total number of reads
 	 */
 	public static void setTotalNumberOfReads(int i){
+		System.out.println("Total Number Of Reads Updated: " + i);
 		totalNumberOfReads=i;
 	}
 	/**
@@ -62,8 +64,8 @@ public class Statistics {
 	 *
 	 * @param i the new short read length
 	 */
-	public static void setShortReadLength(int i){
-		shortReadLength = i;
+	public static void setReadLength(int i){
+		readLength = i;
 	}
 	/**
 	 * Gets the weight of an exon.
@@ -126,7 +128,7 @@ public class Statistics {
 			possibleStartPositions=length-2*(overhang-1);
 			
 		}else{
-			possibleStartPositions=length-2*(overhang-1) + ((shortReadLength-1)-2*(overhang-1));
+			possibleStartPositions=length-2*(overhang-1) + ((readLength-1)-2*(overhang-1));
 		}
 		return (double)count/possibleStartPositions;
 	}
@@ -525,17 +527,19 @@ public class Statistics {
 		switch(method){
 			case COVERAGEPEREXON: return junction.getHits();
 			case RPK: return 0;
-			case RPKM: return (double)junction.getHits()/((shortReadLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
+			case RPKM: return (double)junction.getHits()/((readLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
 			default: return 10;
 			//FIXME getting junction weights
 		}	
 	}
 	public static double getRPKM(ArrayList<SAMRecord> allSAMRecord, ArrayList<Interval> constitutiveIntervals,int totalNumberOfReads){
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
+		Statistics.setReadLength(allSAMRecord.get(0).getCigar().getReadLength());
+		
 		ArrayList<Interval> listOfIntervals = new ArrayList<Interval>();
 		
 		for(Interval interval:constitutiveIntervals){
-			if(interval.getLength()>shortReadLength){
+			if(interval.getLength()>readLength){
 				listOfIntervals.add(interval);
 			}
 		}
@@ -543,7 +547,7 @@ public class Statistics {
 		double count=0;
 		double denominator=0;
 		for(Interval interval:listOfIntervals){
-			denominator+=(interval.getLength()-shortReadLength+1);
+			denominator+=(interval.getLength()-readLength+1);
 			for(SAMRecord samRecord:allSAMRecord){
 				//Ignore all junction reads (body reads are the ones with cigar lengths of 35
 				if(samRecord.getCigar().getCigarElements().size()==1){

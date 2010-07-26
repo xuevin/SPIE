@@ -24,11 +24,11 @@ public class GFF3 {
 		try{
 			score = Double.parseDouble(col6);
 		}catch(Exception e){
-			if(col8=="."){
+			if(col8.equals(".")){
 				score = 0;
 			}
-		}	
-		if(col7=="+"){
+		}
+		if(col7.equals("+")){
 			strand = true;
 		}else{
 			strand=false;
@@ -36,7 +36,7 @@ public class GFF3 {
 		try{
 			phase = Integer.parseInt(col8);
 		}catch(Exception e){
-			if(col8=="."){
+			if(col8.equals(".")){
 				phase = 0;
 			}
 		}

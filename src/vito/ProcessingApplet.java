@@ -12,6 +12,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 
+import com.sun.tools.jdi.EventSetImpl.Itr;
+
 
 import drawableObjects.ErrorBar;
 import drawableObjects.GraphColumn;
@@ -849,6 +851,7 @@ public class ProcessingApplet extends PApplet{
 	private ArrayList<ArrayList<SAMRecord>> currentListOfSamples;
 	private boolean multipleReadsVisible;
 	private int readsPlotHeight;
+	private ArrayList<GraphColumn> distributionPlot;
 	
 	
 	/**
@@ -871,6 +874,7 @@ public class ProcessingApplet extends PApplet{
 		
 		
 		readsPlotToDraw = new ArrayList<ArrayList<GraphColumn>>();
+		distributionPlot = new ArrayList<GraphColumn>();
 		readsPlotVisible=true;
 		splicingLinesVisible=true;
 		gridLinesVisible=true;
@@ -940,6 +944,8 @@ public class ProcessingApplet extends PApplet{
 		}
 		drawReadsPlot();
 		drawLabelForHeight();
+		drawDistrubition();
+		
 		
 		if(recordPDF){
 			endRecord();
@@ -947,6 +953,14 @@ public class ProcessingApplet extends PApplet{
 		    textFont(loadFont("Calibri-16.vlw"));
 		}
 		
+	}
+	private void drawDistrubition() {
+		stroke(0);
+		for(GraphColumn column:distributionPlot){
+			System.out.println(column.getScaledX() + " " + column.getScaledHeight());
+			line(column.getScaledX(),readPlotYStart,column.getScaledX(),readPlotYStart-column.getScaledHeight());
+		}
+
 	}
 	/**
 	 * Draws a label that describes the height at each xCoordinate.
@@ -1045,7 +1059,7 @@ public class ProcessingApplet extends PApplet{
 	private void drawReadsPlot(){
 		if(readsPlotVisible){
 			synchronized (readsPlotToDraw) {
-				
+				strokeCap(SQUARE);
 				if(multipleReadsVisible){
 					int count = 0;
 					for(ArrayList<GraphColumn> sample:readsPlotToDraw){
@@ -1073,7 +1087,8 @@ public class ProcessingApplet extends PApplet{
 					}
 				}
 				
-			}	
+			}
+			strokeCap(ROUND);
 		}
 		
 	}
@@ -1317,7 +1332,7 @@ public class ProcessingApplet extends PApplet{
 	}
 	public void changeMethod(int totalNumberOfReads,int method,int overhang,int readLengths) {
 		
-		Statistics.setTotalNumberOfReads(readLengths);
+		Statistics.setReadLength(readLengths);
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
 		Statistics.setOverhang(overhang);
 		
@@ -1590,9 +1605,13 @@ public class ProcessingApplet extends PApplet{
 					currentSum=densityMap.get(i);
 					prevPixel=mappedPixel;
 				}else if(i==absoluteEndOfGene){
+					float average = (float)currentSum/numberOfBases;
+					if(average>maxAverage){
+						maxAverage=average;
+					}
 					frameAbsoluteEnd=i;
 					numberOfBases++;
-					readsSample.add(new GraphColumn(prevPixel, (float)currentSum/numberOfBases, frameAbsoluteStart, frameAbsoluteEnd));
+					readsSample.add(new GraphColumn(prevPixel, average, frameAbsoluteStart, frameAbsoluteEnd));
 				}else if(mappedPixel!= prevPixel){
 					float average = (float)currentSum/numberOfBases;
 					if(average>maxAverage){
@@ -1617,15 +1636,66 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 	public synchronized void printPDF(String string) {
-//		String[] arrayOfFonts = PGraphicsPDF.listFonts();
-//		for(int i =0;i<arrayOfFonts.length;i++){
-//			System.out.println(arrayOfFonts[i]);
-//		}
 		locationToSave=string;
 		recordPDF =true;
 		
 	}
 	public void setMultipleReadsVisible(boolean bool){
 		multipleReadsVisible=bool;
+	}
+	public synchronized void loadDistribution(ArrayList<Integer> distributionArrayList) {
+		Iterator<Integer> itr = distributionArrayList.iterator();
+		distributionPlot.clear();
+		int largestSize = distributionArrayList.get(distributionArrayList.size()-1).intValue();
+		int maxHits = 0;
+		
+		int prevPixel = -1;
+		int numberOfHits=-1;
+		int frameAbsoluteStart=-1;
+		int frameAbsoluteEnd = -1;
+		
+		while(itr.hasNext()){
+			
+			
+			int length = itr.next().intValue();
+			//System.out.println(length);
+			int mappedPixel = mapToInt(length,0,largestSize,graphXStart,graphXEnd);
+			//System.out.println(mappedPixel);
+				
+			//Goes through each of the genomic coordinates and attempts to map it to a pixel
+			//In the end, a pixel represents the average number of short reads that cross it
+			
+			if(prevPixel==-1){
+				frameAbsoluteStart=length;
+				frameAbsoluteEnd=length;
+				numberOfHits=1;
+				prevPixel=mappedPixel;
+			}else if(itr.equals(distributionArrayList.get(distributionArrayList.size()-1))){//Is this the end?
+				if(numberOfHits>maxHits){
+					maxHits=numberOfHits;
+				}
+				System.out.println("THE END");
+				frameAbsoluteEnd=length;
+				numberOfHits++;
+				distributionPlot.add(new GraphColumn(prevPixel, numberOfHits, frameAbsoluteStart, frameAbsoluteEnd));
+			}else if(mappedPixel!= prevPixel){
+				if(numberOfHits>maxHits){
+					maxHits=numberOfHits;
+				}
+				distributionPlot.add(new GraphColumn(prevPixel, numberOfHits, frameAbsoluteStart, frameAbsoluteEnd));
+				prevPixel=mappedPixel;
+				numberOfHits=1;
+				frameAbsoluteStart=length;
+				frameAbsoluteEnd=length;	
+			}else{	
+				numberOfHits++;
+				frameAbsoluteEnd=length;
+			} 
+			
+		}
+		for(GraphColumn column:distributionPlot){
+			column.setScaledHeight((int)map((float)column.getAverageHits(),0,maxHits,0,readsPlotHeight));
+		}
+		System.out.println(distributionPlot.size());
 	}
 }
