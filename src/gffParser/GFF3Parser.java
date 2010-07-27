@@ -96,7 +96,12 @@ public class GFF3Parser {
 						Gene newGene = new Gene(temp[0],temp[1],temp[2],temp[3],temp[4],temp[5],
 								temp[6],temp[7],temp[8]);
 						hashOfIDHolders.put(newGene.getAttributes().get("ID"),newGene);
-						hashOfGenes.put(newGene.getAttributes().get("Name"),newGene);
+						if(newGene.getAttributes().get("Name")!=null){
+							hashOfGenes.put(newGene.getAttributes().get("Name"),newGene);	
+						}else{
+							hashOfGenes.put(newGene.getId(),newGene);
+						}
+						
 					}else if(type.equals("mRNA")){
 						MRNA newMRNA = new MRNA(temp[0],temp[1],temp[2],temp[3],temp[4],temp[5],
 								temp[6],temp[7],temp[8]);

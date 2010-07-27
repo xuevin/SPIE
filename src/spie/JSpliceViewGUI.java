@@ -804,10 +804,10 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 				//Fill in choices for gene the user can view
 				geneChooser.setEnabled(false);
 				geneChooser.removeAllItems();
-				for(Gene gene:geneRecords.values()){
-					//Assuming that the name attribute exits
-					geneChooser.addItem(gene.getAttributes().get("Name")); 
+				for(String id:geneRecords.keySet()){
+					geneChooser.addItem(id);
 				}
+				
 				geneChooser.setEnabled(true);
 				
 				Gene gene = getCurrentlySelectedGene();
