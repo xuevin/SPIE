@@ -16,8 +16,8 @@ import java.util.Iterator;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.util.CloseableIterator;
-import vito.Interval;
-import vito.Statistics;
+import spie.Interval;
+import spie.Statistics;
 
 public class Fragment_Distribution {
 
@@ -25,24 +25,24 @@ public class Fragment_Distribution {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		File gffFile;//= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/genes.gff");
+		File gffFile= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/genes.gff");
 //		File file= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/cugbp1.gff")
-		File bamFile;//= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/control_0d/accepted_hits_fixed.bam");
-		File bamFileIndex;//= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/control_0d/accepted_hits_fixed.bam.bai");
+		File bamFile= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/control_0d/accepted_hits_fixed.bam");
+		File bamFileIndex= new File("/Users/Vinny/Data/c2c12_cugbp1_kd/control_0d/accepted_hits_fixed.bam.bai");
 		
 		
-		if(args.length==3){
-			gffFile = new File(args[0]);
-			bamFile = new File(args[1]);
-			bamFileIndex = new File(args[2]);
-		}else if(args.length==1){
-			gffFile = new File(args[0]);
-			createConstitutiveIntervalIndex(gffFile);
-			return;
-		}else{
-			System.out.println("Not Enough Arguements");
-			return;
-		}
+//		if(args.length==3){
+//			gffFile = new File(args[0]);
+//			bamFile = new File(args[1]);
+//			bamFileIndex = new File(args[2]);
+//		}else if(args.length==1){
+//			gffFile = new File(args[0]);
+//			createConstitutiveIntervalIndex(gffFile);
+//			return;
+//		}else{
+//			System.out.println("Not Enough Arguements");
+//			return;
+//		}
 		
 		ArrayList<Integer> arrayOfLengths = new ArrayList<Integer>();
 		long start = System.currentTimeMillis();		
@@ -76,14 +76,23 @@ public class Fragment_Distribution {
 					}else{
 						//NOTE: not all mates are reverse ????
 						//what should I do //TOOD
-//								if(samRecord.getMateNegativeStrandFlag()){
-//									System.out.println("Reverese");
-//								}
+
 						if(	interval.contains(samRecord.getAlignmentStart()) &&
 							interval.contains(samRecord.getMateAlignmentStart())){		
 							
-							arrayOfLengths.add(Math.abs(samRecord.getAlignmentStart()-samRecord.getMateAlignmentStart())
-									+samRecord.getCigar().getReadLength());
+							if(samRecord.getReadNegativeStrandFlag()!=samRecord.getMateNegativeStrandFlag()){
+								int length = Math.abs(samRecord.getAlignmentStart()-samRecord.getMateAlignmentStart());
+								if(length==0){
+									//Throw Out
+								}else{
+									arrayOfLengths.add(length+samRecord.getCigar().getReadLength());
+									
+								}
+								
+							}else{
+								//Throw Out
+							}
+							
 						}	
 					}			
 				}

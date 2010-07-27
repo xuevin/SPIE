@@ -8,9 +8,9 @@ import java.util.List;
 import drawableObjects.Rectangle_Weighted;
 
 import processing.core.PApplet;
-import vito.ProcessingApplet;
-import vito.Read;
-import vito.Statistics;
+import spie.ProcessingApplet;
+import spie.Read;
+import spie.Statistics;
 
 public class UpdateAnimation implements Runnable{
 	private List<Rectangle_Weighted> weightedIsoforms;

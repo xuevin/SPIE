@@ -1,4 +1,4 @@
-package vito;
+package spie;
 
 import gffParser.GFF3Parser;
 import gffParser.Gene;

@@ -1,12 +1,12 @@
 #Fat Jar Configuration File
-#Sat Jul 17 04:15:53 EDT 2010
+#Tue Jul 27 14:56:20 EDT 2010
 onejar.license.required=true
 manifest.classpath=
 manifest.removesigners=true
 onejar.checkbox=false
-jarname=Vito.jar
+jarname=spie.jar
 manifest.mergeall=true
-manifest.mainclass=genomeBrowser.Main
+manifest.mainclass=spie.Main
 manifest.file=<createnew>
 jarname.isextern=false
 onejar.expand=

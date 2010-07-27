@@ -1,4 +1,4 @@
-package vito;
+package spie;
 
 
 import gffParser.CDS;
@@ -30,8 +30,8 @@ import net.sf.samtools.SAMRecord;
 
 import processing.core.*;
 import processing.pdf.*;
-import vito.Read;
-import vito.Statistics;
+import spie.Read;
+import spie.Statistics;
 
 public class ProcessingApplet extends PApplet{
 	public enum View{
@@ -935,7 +935,7 @@ public class ProcessingApplet extends PApplet{
 		
 		
 		background(255);
-		text(frameRate,20,20);
+		//text(frameRate,20,20);
 		switch(view){
 			case UNCOLLAPSED_UNWEIGHTED:uncollapsed_Unweighted.draw();break;
 			case UNCOLLAPSED_WEIGHTED:uncollapsed_Weighted.draw();break;

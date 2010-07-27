@@ -5,9 +5,9 @@ import java.util.HashMap;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-import vito.JSpliceViewGUI;
-import vito.ProcessingApplet;
-import vito.Statistics;
+import spie.JSpliceViewGUI;
+import spie.ProcessingApplet;
+import spie.Statistics;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;
