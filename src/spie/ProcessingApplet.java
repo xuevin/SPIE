@@ -1337,13 +1337,10 @@ public class ProcessingApplet extends PApplet{
 		Statistics.setOverhang(overhang);
 		
 		if(method==0){
-			gridLinesVisible=true;
 			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);
 		}else if(method==1){
-			gridLinesVisible=true;
 			Statistics.setMethod(Statistics.Method.RPK);
 		}else if(method==2){
-			gridLinesVisible=false;
 			Statistics.setMethod(Statistics.Method.RPKM);
 		}else{
 			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);

@@ -73,18 +73,18 @@ public class Statistics {
 	 * 
 	 * @param compatibleShortReads the ArrayList of compatible ShortReads
 	 * @param exon the exon
-	 * @param endExon the end exon
+	 * @param isEndExon the end exon
 	 * 
 	 * @return the weight
 	 */
-	public static double getWeightOfExon(Exon exon, ArrayList<Read> compatibleShortReads,Boolean endExon){
+	public static double getWeightOfExon(Exon exon, ArrayList<Read> compatibleShortReads,Boolean isEndExon){
 		int absoluteStart = exon.getStart();
 		int absoluteEnd = exon.getEnd();
 		switch(method){
 			//Average Coverage Per Exon	
 			case COVERAGEPEREXON: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);
-			case RPK: return getBodyReads_Per_ExonLength(absoluteStart, absoluteEnd, compatibleShortReads);
-			case RPKM: return (getAllReads_Per_TotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,endExon)/totalNumberOfReads)*100000000;
+			case RPK: return getBodyReads_per_KExon(absoluteStart, absoluteEnd, compatibleShortReads);
+			case RPKM: return ((double)getAllReads_Per_KTotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,isEndExon)/((double)totalNumberOfReads/1000000));
 			default: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads); 
 		}
 	}
@@ -109,7 +109,7 @@ public class Statistics {
 	 * 
 	 * @return the ratio of all reads : total number of start positions
 	 */
-	private static double getAllReads_Per_TotalPossiblePositions(
+	private static double getAllReads_Per_KTotalPossiblePositions(
 			int absoluteStart, int absoluteEnd,
 			ArrayList<Read> compatibleShortReads,boolean endExon) {
 		int count=0;
@@ -130,7 +130,7 @@ public class Statistics {
 		}else{
 			possibleStartPositions=length-2*(overhang-1) + ((readLength-1)-2*(overhang-1));
 		}
-		return (double)count/possibleStartPositions;
+		return (double)count/((double)possibleStartPositions/1000);
 	}
 	
 	/**
@@ -140,7 +140,7 @@ public class Statistics {
 	 * @param absoluteEnd the absolute end of the exon
 	 * @param compatibleShortReads the ArrayList of compatible ShortReads
 	 * 
-	 * @return the sum of reads per base divided by total number of bases
+	 * @return the sum of reads (junction and body) per base divided by total number of bases
 	 */
 	public static double getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
 		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
@@ -162,7 +162,7 @@ public class Statistics {
 	 * 
 	 * @return the number of reads for the exon divided by the length of the exon
 	 */
-	public static double getBodyReads_Per_ExonLength(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
+	public static double getBodyReads_per_KExon(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
 		int length = (absoluteEnd-absoluteStart+1);
 		int count=0;
 		for(Read shortRead:compatibleShortReads){
@@ -173,7 +173,7 @@ public class Statistics {
 			}
 			
 		}
-		return (double)count/(length);
+		return (double)count/((double)length/1000);
 	}
 	public static double getStandardDeviation(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
 		switch(method){
@@ -527,7 +527,7 @@ public class Statistics {
 		switch(method){
 			case COVERAGEPEREXON: return junction.getHits();
 			case RPK: return 0;
-			case RPKM: return (double)junction.getHits()/((readLength-1)-2*(overhang-1))/totalNumberOfReads*100000000; 
+			case RPKM: return (double)junction.getHits()/((double)((readLength-1)-2*(overhang-1))/1000)/(totalNumberOfReads/1000000); 
 			default: return 10;
 			//FIXME getting junction weights
 		}	

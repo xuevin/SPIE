@@ -73,7 +73,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private JList multiIsoformChooser;
 	private DefaultListModel isoformList;
 	private JScrollPane listHolder; 
-	private JButton reloadButton,loadWeightedIsoformButton,sampleChooser;
+	private JButton reloadButton,sampleChooser;
 	private JProgressBar bamCounterProgressBar;
 	private ArrayList<SAMFileReader> listOfSamRecords;
 	private JLabel readsCounter;
@@ -252,13 +252,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		readCheckBox.setSelected(true);
 		readCheckBox.setEnabled(false);
 		readCheckBox.addActionListener(this);
-
-		//loadWeightedIsoformButton
-		loadWeightedIsoformButton = new JButton("This is a useless button....");
-		loadWeightedIsoformButton.setAlignmentX(LEFT_ALIGNMENT);
-		loadWeightedIsoformButton.setEnabled(false);
-		loadWeightedIsoformButton.addActionListener(this);
-		
 		
 		//scalingSlider
 		scaleSlider = new JSlider(JSlider.HORIZONTAL,1,40,5);
@@ -356,7 +349,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		controlBox.add(readChooser);
 		controlBox.add(new JLabel("Choose an Isoform"));
 		controlBox.add(listHolder);
-		controlBox.add(loadWeightedIsoformButton);
 		controlBox.add(sampleChooser);
 		
 		
@@ -426,8 +418,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			System.exit(0);	
 		}else if(e.getSource()==geneChooser){
 			geneChooserAction();
-		}else if(e.getSource()==loadWeightedIsoformButton){
-			loadWeightedIsoformAction();
 		}else if(e.getSource()==reloadButton){
 			reloadButonAction();
 		}else if(e.getSource()==methodComboBox){
@@ -652,12 +642,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		}
 		
 		
-	}
-	private void loadWeightedIsoformAction() {
-		//FIXME
-//		applet.setUncollapsed_WeightedIsoformsVisible(true);
-//		applet.setUncollapsed_UnweightedIsoformsVisible(false);
-//		applet.loadUncollapsed_WeightedOfCurrentlyShowingIsoforms();
 	}
 	public void stateChanged(ChangeEvent e){
 		if(e.getSource()==scaleSlider){
@@ -888,7 +872,6 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		if(filesLoaded()){
 			
 			readCheckBox.setEnabled(true);
-			loadWeightedIsoformButton.setEnabled(true);
 			multiIsoformChooser.setEnabled(true);
 			collapsed_Weighted.setEnabled(true);
 			uncollapsed_Weighted.setEnabled(true);
