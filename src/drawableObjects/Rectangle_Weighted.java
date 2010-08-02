@@ -1,5 +1,12 @@
 package drawableObjects;
 
+/**
+ * Rectangle_Weighted is class that describes what a
+ * Rectangle_Weighted object should have.
+ *  
+ * @author Vincent Xue
+ *
+ */
 public class Rectangle_Weighted{
 
 	private double weight;
@@ -34,21 +41,48 @@ public class Rectangle_Weighted{
 		scaledHeight=iScaledHeight;
 		isoformID=iIsoformID;	
 	}
+	
+	/**
+	 * Sets the weight of the rectangle
+	 *
+	 * @param iWeight the new weight
+	 */
 	public void setWeight(double iWeight) {
 		weight = iWeight;
 	}
+	
+	/**
+	 * Gets the weight of the rectangle
+	 *
+	 * @return the weight
+	 */
 	public double getWeight() {
 		return weight;
 	}
-	public void incrementWeight(double increment){
-		weight+=increment;
-	}
+	
+	/**
+	 * Gets the genomic length represented by the rectangle
+	 *
+	 * @return the genomic length of the rectangle
+	 */
 	public int getAbsoluteLength() {
 		return (absoluteEnd-absoluteStart+1);
 	}
+	
+	/**
+	 * Gets the start of the genomic coordinate for region represented 
+	 *
+	 * @return the start of the genomic coordinate for region represented
+	 */
 	public int getAbsoluteStart(){
 		return absoluteStart;
 	}
+	
+	/**
+	 * Gets the end of the genomic coordinate for region represented
+	 *
+	 * @return the start of the genomic coordinate for region represented
+	 */
 	public int getAbsoluteEnd(){
 		return absoluteEnd;
 	}

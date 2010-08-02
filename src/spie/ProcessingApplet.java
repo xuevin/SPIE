@@ -196,7 +196,10 @@ public class ProcessingApplet extends PApplet{
 							weightedIsoforms.add(temp);
 							errorBars.add(new ErrorBar(	average,
 									Statistics.getStandardDeviation(exon.getStart(),exon.getEnd(),compatibleReads),
-									temp,mrna.getId(),(startScaled+lengthScaled/2)));
+									temp.getAbsoluteStart(),
+									temp.getAbsoluteEnd(),
+									mrna.getId(),
+									(startScaled+lengthScaled/2)));
 							
 							//Fill in array that draws the reference isoforms
 							Rectangle_Unweighted temp2 = new Rectangle_Unweighted(startScaled, yRefStart, lengthScaled,10,exon.getStart(),
@@ -468,23 +471,40 @@ public class ProcessingApplet extends PApplet{
 				
 				for(Read read:Statistics.getCompatibleReads(isoform, currentListOfSamples.get(0))){
 					if(read.isJunctionRead()){
-						int startScaled = scalePosition(read.getFirstExonEnd()+1,listOfIntrons);
-						int endScaled = scalePosition(read.getLastExonBeginning()-1,listOfIntrons);				
+						
+						int junctionStart = read.getFirstExonEnd()-(readLength-overhang-1);
+						int junctionEnd = read.getLastExonBeginning()+(readLength-overhang-1);
+						
+						int startScaled = scalePosition(junctionStart,listOfIntrons);
+						int endScaled = scalePosition(junctionEnd,listOfIntrons);				
 						
 						boolean found =false;
 						for(Junction junction:iJunctionList){
 							if(junction.getLeftScaled()==startScaled && junction.getRightScaled()==endScaled){
-								junction.incrementCount(1);
+								junction.addRead(read);
 								found=true;
 							}					
 						}
 						if(!found){
-							iJunctionList.add(new Junction(startScaled,endScaled,1));
+							Junction tempJunction = new Junction(junctionStart,junctionEnd,startScaled,endScaled,0,isoform.getId());
+							tempJunction.addRead(read);
+							iJunctionList.add(tempJunction);
+							
 						}		
 					}	
 				}
 				for(Junction junction:iJunctionList){
-					junction.setWeight(Statistics.getWeightOfJunction(junction));
+					double weight = Statistics.getWeightOfJunction(junction);
+					junction.setWeight(weight);
+					//FIXME
+					errorBars.add(new ErrorBar(	weight, 
+												Statistics.getStandardDeviation(junction.getAbsoluteStart(),
+																				junction.getAbsoluteEnd(),
+																				junction.getCompatibleReads()), 
+												junction.getAbsoluteStart(),
+												junction.getAbsoluteEnd(),
+												junction.getIsoformID(), 
+												junction.getScaledMiddle()));
 				}
 			}
 			protected abstract int scaleLength(int length,ArrayList<Interval> listOfIntrons);
@@ -852,6 +872,8 @@ public class ProcessingApplet extends PApplet{
 	private boolean multipleReadsVisible;
 	private int readsPlotHeight;
 	private ArrayList<GraphColumn> distributionPlot;
+	private int overhang;
+	private int readLength;
 	
 	
 	/**
@@ -1035,16 +1057,6 @@ public class ProcessingApplet extends PApplet{
 		if(mouseY<readPlotYStart&&mouseY>readPlotYStart-readsPlotHeight){
 			readsPlotHeight=(readsPlotHeight+(pmouseY-mouseY));
 			line(graphXStart,readPlotYStart-readsPlotHeight,graphXEnd,readPlotYStart-readsPlotHeight);
-//			synchronized (readsPlotToDraw) {
-//				for(ArrayList<GraphColumn> plot:readsPlotToDraw){
-//					for(GraphColumn column:plot){
-//						//FIXME
-//						int newScaledHeight=(int) map((float) column.getScaledHeight(),0,readsPlotHeight,0,readsPlotHeight+mouseDragY);
-//						column.setScaledHeight(newScaledHeight);
-//					}
-//				}	
-//			}
-			
 		}	
 	}
 	public void mouseReleased(){
@@ -1330,11 +1342,14 @@ public class ProcessingApplet extends PApplet{
 		
 		
 	}
-	public void changeMethod(int totalNumberOfReads,int method,int overhang,int readLengths) {
+	public void changeMethod(int totalNumberOfReads,int method,int iOverhang,int iReadLength) {
+		//TODO make sure that changing bam samples also calls this method... (may have to implement it in load single read)
 		
-		Statistics.setReadLength(readLengths);
+		Statistics.setReadLength(readLength);
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
-		Statistics.setOverhang(overhang);
+		Statistics.setOverhang(iOverhang);
+		overhang=iOverhang;
+		readLength=iReadLength;
 		
 		if(method==0){
 			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);

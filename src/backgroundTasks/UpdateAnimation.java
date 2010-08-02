@@ -12,12 +12,28 @@ import spie.ProcessingApplet;
 import spie.Read;
 import spie.Statistics;
 
+/**
+ * This is a thead used to update the animations when a new sample is loaded or 
+ * when the user switches between samples
+ * 
+ * @author Vinny
+ *
+ */
 public class UpdateAnimation implements Runnable{
 	private List<Rectangle_Weighted> weightedIsoforms;
 	private ArrayList<Read> compatibleShortReads;
 	private ProcessingApplet parent;
 	private MRNA isoform;
 	
+	/**
+	 * Instantiates a new update animation thread.
+	 *
+	 * @param processingApplet the parent ProcessingApplet that called it 
+	 * 							(Allows the thread to call the "loadIsoforms" function"
+	 * @param iIsoform the isoform that the user is currently viewing.
+	 * @param iCompatibleShortReads the ArrayList of Compatible reads for the new sample
+	 * @param weightedIsoforms2 the ArrayList of weightedIsoforms that the parent ProcessingApplet draws
+	 */
 	public UpdateAnimation(ProcessingApplet processingApplet,MRNA iIsoform,ArrayList<Read> iCompatibleShortReads,
 			List<Rectangle_Weighted> weightedIsoforms2) {
 		compatibleShortReads=iCompatibleShortReads;

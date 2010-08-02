@@ -615,6 +615,8 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 					bamTo_FileName.get(samReader),
 					getShortReadMatch(gene, samReader),
 					gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
+		}else{
+			applet.loadCurrentlyViewingIsoforms();
 		}
 	}
 	private int getCurrentOverhang() {

@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 
 import drawableObjects.Junction;
@@ -71,21 +72,21 @@ public class Statistics {
 	 * Gets the weight of an exon.
 	 * This weight is dependent on what method is used.
 	 * 
-	 * @param compatibleShortReads the ArrayList of compatible ShortReads
+	 * @param compatibleMRNAReads the ArrayList of compatible reads for the MRNA
 	 * @param exon the exon
 	 * @param isEndExon the end exon
 	 * 
 	 * @return the weight
 	 */
-	public static double getWeightOfExon(Exon exon, ArrayList<Read> compatibleShortReads,Boolean isEndExon){
+	public static double getWeightOfExon(Exon exon, ArrayList<Read> compatibleMRNAReads,Boolean isEndExon){
 		int absoluteStart = exon.getStart();
 		int absoluteEnd = exon.getEnd();
 		switch(method){
 			//Average Coverage Per Exon	
-			case COVERAGEPEREXON: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads);
-			case RPK: return getBodyReads_per_KExon(absoluteStart, absoluteEnd, compatibleShortReads);
-			case RPKM: return ((double)getAllReads_Per_KTotalPossiblePositions(absoluteStart, absoluteEnd, compatibleShortReads,isEndExon)/((double)totalNumberOfReads/1000000));
-			default: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleShortReads); 
+			case COVERAGEPEREXON: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleMRNAReads);
+			case RPK: return getBodyReads_per_KExon(absoluteStart, absoluteEnd, compatibleMRNAReads);
+			case RPKM: return ((double)getAllReads_Per_KTotalPossiblePositions(absoluteStart, absoluteEnd, compatibleMRNAReads,isEndExon)/((double)totalNumberOfReads/1000000));
+			default: return getAverage_ReadsPerBase_PerExon(absoluteStart, absoluteEnd, compatibleMRNAReads); 
 		}
 	}
 	
@@ -140,10 +141,18 @@ public class Statistics {
 	 * @param absoluteEnd the absolute end of the exon
 	 * @param compatibleShortReads the ArrayList of compatible ShortReads
 	 * 
-	 * @return the sum of reads (junction and body) per base divided by total number of bases
+	 * @return the sum of reads body per base divided by total number of bases
 	 */
 	public static double getAverage_ReadsPerBase_PerExon(int absoluteStart, int absoluteEnd, ArrayList<Read> compatibleShortReads){
-		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(compatibleShortReads);
+		//Sort out the body reads
+		ArrayList<Read> bodyReads = new ArrayList<Read>();
+		for(Read read :compatibleShortReads){
+			if(read.isBodyRead()){
+				bodyReads.add(read);	
+			}
+		}
+		
+		ArrayList<SAMRecord> compatibleSAMRecords = convertShortReadsToSamRecords(bodyReads);
 		HashMap<Integer,Integer> compatibleDensityMap = getDensityMap(absoluteStart, absoluteEnd, compatibleSAMRecords);
 		int sum =0;
 		for(int i =absoluteStart;i<=absoluteEnd;i++){
@@ -305,10 +314,14 @@ public class Statistics {
 		}
 		Read newShortRead = new Read(samRecord,samInterval);
 		
+		Iterator<Exon> itr = exonList.iterator();
+		
+		
 		for(int i =0;i<samInterval.size();i++){
 			if(i==0){
 				boolean found = false;
-				for(Exon exon: exonList){
+				while(itr.hasNext()){
+					Exon exon = itr.next();
 					//Get the first exon whose interval whose start is less than the short read start
 					//but whose end is greater than or equal to the short read start
 					if(exon.getStart()<=samInterval.get(0).getStartCoord() && exon.getEnd()>=samInterval.get(0).getStartCoord()){
@@ -344,31 +357,26 @@ public class Statistics {
 				
 			}
 			if(i!=samInterval.size()-1){// check if the interval is completely within an exon
-				boolean found = false;
-				for(Exon exon: exonList){
-					if(exon.getStart()==samInterval.get(i).getStartCoord() && exon.getEnd()==samInterval.get(i).getEndCoord()){
+				Exon exon = itr.next();
+				if(exon.getStart()==samInterval.get(i).getStartCoord() && exon.getEnd()==samInterval.get(i).getEndCoord()){
 //						System.out.print(" " + i +"-I&E");
-						newShortRead.addExons(exon);
-						i++;
-						found=true;
-						break;
-					}
-				}
-				if(!found){
+					newShortRead.addExons(exon);
+					i++;
+				}else{
 //					System.out.println(" " + i +"-I*E");
 					return null;
 				}
 			}
 			if(i==samInterval.size()-1){ //Check if the last interval is within the last exon
-				for(Exon exon: exonList){
-					if(exon.getStart()==samInterval.get(i).getStartCoord() && exon.getEnd()>=samInterval.get(i).getEndCoord()){
-//						System.out.println(" Junction Read ");
-						newShortRead.addExons(exon);
-						return newShortRead;	
-					}
+				Exon exon = itr.next();
+				if(exon.getStart()==samInterval.get(i).getStartCoord() && exon.getEnd()>=samInterval.get(i).getEndCoord()){
+//					System.out.println(" Junction Read ");
+					newShortRead.addExons(exon);
+					return newShortRead;	
+				}else{
+//					System.out.println(" " + i +"-No End Match");
+					return null;
 				}
-//				System.out.println(" " + i +"-No End Match");
-				return null;
 			}
 		}
 		System.err.println(" This is wrong ");
