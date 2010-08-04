@@ -6,6 +6,7 @@ import gffParser.Exon;
 import gffParser.MRNA;
 
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -138,32 +139,29 @@ public class ProcessingApplet extends PApplet{
 					weightedConstitutiveRectangles.clear();
 					junctionList.clear();
 					
+					
+					//Get a list of the the constitutive intervals for coloring in constitutive regions
 					ArrayList<Interval> listOfConstitutiveIntervals = Statistics.getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
 					
 					//Get a list of the large consitutitive exons
 					ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(listOfMRNA);
 					
+					//Fill in the junctions
+					fillJunctionList(junctionList,listOfMRNA);
 					
 					int yRefStart=30; // Start of where the reference labels go
 					int count =0;
-					//For each isoform
+					
+					
+					//For each isoform					
 					for(MRNA mrna:listOfMRNA){
 						hashOfIsoforms.put(mrna.getId(),mrna);
-						int cdsColor = color(150);
-						int exonColor = color(40);
+						int cdsColor = color(convertColor(colorScheme.getCDSColor()));
+						int exonColor = color(convertColor(colorScheme.getExonColor()));
 						if(listOfMRNA.size()>1){	
-							colorMode(HSB, 40,100,50);
-							if(count%2==0){
-								cdsColor = color(count+20,100,100);
-								exonColor = color(count+20,100,100);	
-							}else{
-								cdsColor = color(count,100,100);
-								exonColor = color(count,100,100);
-							}
+							cdsColor = convertColor(colorScheme.getColorOf(count));
+							exonColor = convertColor(colorScheme.getColorOf(count));	
 							count++;
-							colorMode(RGB,255);
-						}else{
-							fillJunctionList(junctionList,mrna);
 						}
 						
 						ArrayList<Read>compatibleReads = Statistics.getCompatibleReads(mrna, currentListOfSamples.get(0));
@@ -212,7 +210,7 @@ public class ProcessingApplet extends PApplet{
 							//It still needs to be scaled (look at drawWeightedConstitutiveLines)
 							for(Interval interval :listOfConstitutiveIntervals){
 								if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
-									int color = color(0,0,255);
+									int color = convertColor(colorScheme.getConstitutiveColor());
 									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
 																								scaleLength(interval.getLength(),listOfIntrons), 
 																								10, 
@@ -251,7 +249,7 @@ public class ProcessingApplet extends PApplet{
 							//It still needs to be scaled (look at drawWeightedConstitutiveLines)
 							for(Interval interval :listOfConstitutiveIntervals){
 								if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
-									int color = color(0,0,255);
+									int color = convertColor(colorScheme.getConstitutiveColor());
 									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
 																								scaleLength(interval.getLength(),listOfIntrons),
 																								20, 
@@ -300,7 +298,7 @@ public class ProcessingApplet extends PApplet{
 			}
 
 			private void drawErrorBars(){
-						if(errorBars!=null){
+						if(errorBars!=null && errorBarsVisible){
 							synchronized (errorBars) {
 								for(ErrorBar error:errorBars){
 									double SD = error.getStandardDeviation()*yScale;
@@ -357,9 +355,10 @@ public class ProcessingApplet extends PApplet{
 			private void drawJunctionLines() {
 				if(junctionList!=null){
 					synchronized (junctionList) {
-						stroke(255,0,0);
+						
 						strokeWeight(3);
 						for(Junction junction:junctionList){
+							stroke(junction.getColor());
 							int yPos=graphYStart;
 	//						for(int i=0;i<junction.getHits();i++){
 	//							line(junction.getLeftScaled(),yPos,junction.getRightScaled(),yPos);
@@ -369,7 +368,7 @@ public class ProcessingApplet extends PApplet{
 							line(junction.getLeftScaled(),height,junction.getRightScaled(),height);
 						}
 						strokeWeight(1);
-						stroke(1);
+						stroke(0);
 					}
 				}
 				
@@ -423,9 +422,7 @@ public class ProcessingApplet extends PApplet{
 									//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
 								//Because the rectangle is drawn from the corner, subtract half its height;
 								newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
-								colorMode(HSB, 40,100,50);
 								rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
-								colorMode(RGB,255);
 							}
 							fill(0);
 					}
@@ -449,9 +446,7 @@ public class ProcessingApplet extends PApplet{
 							//graphYStart-((graphYStart-rectangle.getScaledYCoord())*yScale);
 						//Because the rectangle is drawn from the corner, subtract half its height;
 						newScaledYCoord=newScaledYCoord-(rectangle.getScaledHeight()/2);
-						colorMode(HSB, 40,100,50);
 						rect(rectangle.getScaledXCoord(),newScaledYCoord,rectangle.getScaledLength(),rectangle.getScaledHeight());
-						colorMode(RGB,255);
 					}
 					
 				}
@@ -463,48 +458,53 @@ public class ProcessingApplet extends PApplet{
 				drawHoverInfo();
 			}
 	
-			private void fillJunctionList(ArrayList<Junction> iJunctionList,MRNA isoform) {
-				iJunctionList.clear();
-				ArrayList<MRNA> temp = new ArrayList<MRNA>();
-				temp.add(isoform);
-				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(temp);
-				
-				for(Read read:Statistics.getCompatibleReads(isoform, currentListOfSamples.get(0))){
-					if(read.isJunctionRead()){
-						
-						int junctionStart = read.getFirstExonEnd()-(readLength-overhang-1);
-						int junctionEnd = read.getLastExonBeginning()+(readLength-overhang-1);
-						
-						int startScaled = scalePosition(junctionStart,listOfIntrons);
-						int endScaled = scalePosition(junctionEnd,listOfIntrons);				
-						
-						boolean found =false;
-						for(Junction junction:iJunctionList){
-							if(junction.getLeftScaled()==startScaled && junction.getRightScaled()==endScaled){
-								junction.addRead(read);
-								found=true;
-							}					
-						}
-						if(!found){
-							Junction tempJunction = new Junction(junctionStart,junctionEnd,startScaled,endScaled,0,isoform.getId());
-							tempJunction.addRead(read);
-							iJunctionList.add(tempJunction);
+			private void fillJunctionList(ArrayList<Junction> iJunctionList,Collection<MRNA> listOfMRNA) {
+
+				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(listOfMRNA);
+				int count = 0;
+				for(MRNA mrna :listOfMRNA){
+					for(Read read:Statistics.getCompatibleReads(mrna, currentListOfSamples.get(0))){
+						if(read.isJunctionRead()){
 							
-						}		
-					}	
-				}
-				for(Junction junction:iJunctionList){
-					double weight = Statistics.getWeightOfJunction(junction);
-					junction.setWeight(weight);
-					//FIXME
-					errorBars.add(new ErrorBar(	weight, 
-												Statistics.getStandardDeviation(junction.getAbsoluteStart(),
-																				junction.getAbsoluteEnd(),
-																				junction.getCompatibleReads()), 
-												junction.getAbsoluteStart(),
-												junction.getAbsoluteEnd(),
-												junction.getIsoformID(), 
-												junction.getScaledMiddle()));
+							int junctionStart = read.getFirstExonEnd()-(readLength-overhang-1);
+							int junctionEnd = read.getLastExonBeginning()+(readLength-overhang-1);
+							
+							int startScaled = scalePosition(junctionStart,listOfIntrons);
+							int endScaled = scalePosition(junctionEnd,listOfIntrons);				
+							
+							boolean found =false;
+							for(Junction junction:iJunctionList){
+								if(junction.getLeftScaled()==startScaled && junction.getRightScaled()==endScaled && junction.getIsoformID()==mrna.getId()){
+									junction.addRead(read);
+									found=true;
+								}					
+							}
+							if(!found){
+								Junction tempJunction = new Junction(	junctionStart,
+																		junctionEnd,
+																		startScaled,
+																		endScaled,
+																		mrna.getId(),
+																		convertColor(colorScheme.getColorOf(count)));
+								tempJunction.addRead(read);
+								iJunctionList.add(tempJunction);
+								
+							}		
+						}	
+					}
+					for(Junction junction:iJunctionList){
+						double weight = Statistics.getWeightOfJunction(junction);
+						junction.setWeight(weight);
+						errorBars.add(new ErrorBar(	weight, 
+													Statistics.getStandardDeviation(junction.getAbsoluteStart(),
+																					junction.getAbsoluteEnd(),
+																					junction.getCompatibleReads()), 
+													junction.getAbsoluteStart(),
+													junction.getAbsoluteEnd(),
+													junction.getIsoformID(), 
+													junction.getScaledMiddle()));
+					}
+					count++;
 				}
 			}
 			protected abstract int scaleLength(int length,ArrayList<Interval> listOfIntrons);
@@ -607,8 +607,8 @@ public class ProcessingApplet extends PApplet{
 					ArrayList<Rectangle_Unweighted> sortedRectangles = new ArrayList<Rectangle_Unweighted>();
 					
 					// Exons
-					int cdsColor = color(150);
-					int exonColor = color(40);
+					int cdsColor = convertColor(colorScheme.getCDSColor());
+					int exonColor = convertColor(colorScheme.getExonColor());
 					for(Exon exon:mrna.getExons().values()){
 						int scaledLength= scaleLength(exon.getLength(),listOfIntrons);
 						int scaledStart = scalePosition(exon.getStart(), listOfIntrons);
@@ -628,7 +628,7 @@ public class ProcessingApplet extends PApplet{
 						//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
 						for(Interval interval :listOfConstitutiveIntervals){
 							if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
-								int color = color(0,0,255);
+								int color = convertColor(colorScheme.getConstitutiveColor());;
 								unweightedConstitutiveRectangle.add(
 										new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
 																	yPosition+5, 
@@ -661,7 +661,7 @@ public class ProcessingApplet extends PApplet{
 						//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
 						for(Interval interval :listOfConstitutiveIntervals){
 							if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
-								int color = color(0,0,255);
+								int color = convertColor(colorScheme.getConstitutiveColor());
 								unweightedConstitutiveRectangle.add(
 										new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
 																	yPosition, 
@@ -680,7 +680,7 @@ public class ProcessingApplet extends PApplet{
 					
 					
 					//Load Start and Stop Codons
-					int color = color(0,255,0, 100);//Green
+					int color = convertColor(colorScheme.getStartStopColor());
 					if(mrna.getStartCodon()!=null){
 						int scaledLength= scaleLength(mrna.getStartCodon().getLength(),listOfIntrons);
 						int scaledStart = scalePosition(mrna.getStartCodon().getStart(),listOfIntrons);
@@ -844,9 +844,7 @@ public class ProcessingApplet extends PApplet{
 	
 	private ArrayList<MRNA> currentlyViewingIsoforms;
 	private ArrayList<MRNA> customListOfIsoforms;
-	
 	private ArrayList<Integer> tempConstitutiveUnscaledPositions,customConstitutiveUnscaledPositions;
-	
 	private ArrayList<ArrayList<GraphColumn> > readsPlotToDraw;
 	
 	private int yScale;
@@ -857,8 +855,6 @@ public class ProcessingApplet extends PApplet{
 	private int absoluteStartOfGene;
 	private int absoluteLengthOfGene;
 	private int absoluteEndOfGene;
-//	private ArrayList<SAMRecord> sampleReads; //Different per gene (used to calculate weights)
-//	private String sampleReadsName;
 	private Thread currentAnimation;
 	private HashMap<String,MRNA> hashOfIsoforms; //Key is the MRNA ID
 	private View view;
@@ -870,10 +866,12 @@ public class ProcessingApplet extends PApplet{
 	private ArrayList<Integer> currentListOfBamCounts;
 	private ArrayList<ArrayList<SAMRecord>> currentListOfSamples;
 	private boolean multipleReadsVisible;
+	private boolean errorBarsVisible;
 	private int readsPlotHeight;
 	private ArrayList<GraphColumn> distributionPlot;
 	private int overhang;
 	private int readLength;
+	private ColorScheme colorScheme;
 	
 	
 	/**
@@ -882,7 +880,8 @@ public class ProcessingApplet extends PApplet{
 	 * @param iWidth the width of the applet
 	 * @param iHeight the height of the applet
 	 */
-	public ProcessingApplet(int iWidth, int iHeight){
+	public ProcessingApplet(int iWidth, int iHeight, ColorScheme inputColorScheme){
+		colorScheme = inputColorScheme;
 		view = View.UNCOLLAPSED_UNWEIGHTED;
 		width=iWidth;
 		height=iHeight;
@@ -901,6 +900,7 @@ public class ProcessingApplet extends PApplet{
 		splicingLinesVisible=true;
 		gridLinesVisible=true;
 		constitutiveRegionsVisible=true;
+		errorBarsVisible = true;
 		
 		tempConstitutiveUnscaledPositions=new ArrayList<Integer>();
 		customConstitutiveUnscaledPositions = new ArrayList<Integer>();
@@ -1075,18 +1075,13 @@ public class ProcessingApplet extends PApplet{
 				if(multipleReadsVisible){
 					int count = 0;
 					for(ArrayList<GraphColumn> sample:readsPlotToDraw){
-						colorMode(HSB, 40,100,50);
-						if(count%2==0){
-							stroke((count+20),100,50,150);
-						}else{
-							stroke(count,100,50,150);
-						}
-						count++;						
+						
+						stroke(convertColor(colorScheme.getColorOf(count)));
+						count++;
 						for(GraphColumn column:sample){
 							line(column.getScaledX(),readPlotYStart,column.getScaledX(),readPlotYStart-column.getScaledHeight());
 
 						}
-						colorMode(RGB,255);
 						stroke(0);
 					}
 					
@@ -1140,7 +1135,7 @@ public class ProcessingApplet extends PApplet{
 		splicingLinesVisible=bool;
 	}
 	public void loadArrayOfIsoforms(ArrayList<MRNA> listOfMRNA){
-		loadNewArrayOfIsoforms(	listOfMRNA, absoluteStartOfGene, absoluteLengthOfGene, isCodingStrand);
+		loadNewArrayOfIsoforms(listOfMRNA, absoluteStartOfGene, absoluteLengthOfGene, isCodingStrand);
 	}
 	public synchronized void loadNewArrayOfIsoforms(Collection<MRNA> isoforms,int iAbsoluteStartOfGene,int 
 			iAbsoluteLengthOfGene, boolean strand){
@@ -1182,8 +1177,7 @@ public class ProcessingApplet extends PApplet{
 				break;
 			}
 			case UNCOLLAPSED_WEIGHTED:{ 
-				uncollapsed_Weighted.loadNewArrayOfWeightedIsoforms(isoforms);
-																			
+				uncollapsed_Weighted.loadNewArrayOfWeightedIsoforms(isoforms);												
 				break;
 			}
 			case COLLAPSED_UNWEIGHTED:{ 
@@ -1709,5 +1703,11 @@ public class ProcessingApplet extends PApplet{
 			column.setScaledHeight((int)map((float)column.getAverageHits(),0,maxHits,0,readsPlotHeight));
 		}
 		System.out.println(distributionPlot.size());
+	}
+	public void setErrorBarsVisible(boolean bool) {
+		errorBarsVisible=bool;		
+	}
+	public int convertColor(Color color){
+		return color(color.getRed(),color.getGreen(),color.getBlue());
 	}
 }

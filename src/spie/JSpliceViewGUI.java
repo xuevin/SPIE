@@ -26,6 +26,7 @@ import javax.swing.ButtonGroup;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JColorChooser;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -98,13 +99,19 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private DefaultListModel listOfBamSamples;
 	private JCheckBox multipleReadsVisibleCheckbox;
 	private JMenuItem loadDistributionMenuItem;
+	private JCheckBox errorBarsCheckBox;
+	private JButton colorChooserButton;
+	private ColorScheme colorScheme;
+	private JFrame popupColorChooser;
 	
 	//Constructor
 	public JSpliceViewGUI(){
 		setLayout(new BorderLayout());
 		
+		
 		fileChooser= new JFileChooser();
 		geneRecords=null;
+		colorScheme = new ColorScheme();
 		listOfSamRecords=new ArrayList<SAMFileReader>();
 		bamTo_FileCount = new HashMap<SAMFileReader, Integer>();
 		bamTo_FileName = new HashMap<SAMFileReader,String>();
@@ -210,7 +217,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		readsCounter.setAlignmentX(LEFT_ALIGNMENT);
 		
 		//Processing Applet
-		applet = new ProcessingApplet(1050, 680);
+		applet = new ProcessingApplet(1050, 680,colorScheme);
 		applet.addMouseListener(this);
 		applet.init();
 		
@@ -230,6 +237,13 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		spliceLinesCheckBox.setSelected(true);
 		spliceLinesCheckBox.setEnabled(false);
 		spliceLinesCheckBox.addActionListener(this);
+		
+		//errorBars Check Box
+		errorBarsCheckBox = new JCheckBox("Show Error Bars");
+		errorBarsCheckBox.setAlignmentX(LEFT_ALIGNMENT);
+		errorBarsCheckBox.setSelected(true);
+		errorBarsCheckBox.setEnabled(false);
+		errorBarsCheckBox.addActionListener(this);
 		
 		//Directionality Check Box
 		isCodingCheckBox = new JCheckBox("Show Coding");
@@ -331,6 +345,9 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		multipleReadsVisibleCheckbox.addActionListener(this);
 		
 		
+		colorChooserButton = new JButton("Pick Colors");
+		colorChooserButton.addActionListener(this);
+		
 		//ControlBox
 		controlBox = new JPanel();
 		controlBox.setPreferredSize(new Dimension(200,getHeight()));
@@ -342,6 +359,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		controlBox.add(isCodingCheckBox);
 		controlBox.add(constitutiveRegionsVisibleCheckBox);
 		controlBox.add(readCheckBox);
+		controlBox.add(errorBarsCheckBox);
 		controlBox.add(multipleReadsVisibleCheckbox);
 		controlBox.add(new JLabel("Choose a Gene"));
 		controlBox.add(geneChooser);
@@ -350,7 +368,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		controlBox.add(new JLabel("Choose an Isoform"));
 		controlBox.add(listHolder);
 		controlBox.add(sampleChooser);
-		
+		controlBox.add(colorChooserButton);
 		
 		//currentShortReadLabel
 		currentShortReadLabel = new JLabel("Sample:");
@@ -453,7 +471,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			}
 			repaint();	
 		}else if(e.getSource()==readChooser){
-			shortReadChooserAction();
+			readChooserAction();
 		}else if(e.getSource()==uncollapsed_Unweighted){
 			applet.setView(ProcessingApplet.View.UNCOLLAPSED_UNWEIGHTED);
 			applet.loadCurrentlyViewingIsoforms();
@@ -476,7 +494,59 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 			applet.setMultipleReadsVisible(multipleReadsVisibleCheckbox.isSelected());
 		}else if(e.getSource()==loadDistributionMenuItem){
 			loadDistributionAction();
+		}else if(e.getSource()==errorBarsCheckBox){
+			applet.setErrorBarsVisible(errorBarsCheckBox.isSelected());
+		}else if(e.getSource()==colorChooserButton){
+			colorChooserButtonAction();
+			
 		}
+	}
+	private void colorChooserButtonAction() {
+		if(popupColorChooser!=null){
+			popupColorChooser.dispose();
+			popupColorChooser=null;
+		}
+		final JSpliceViewGUI self = this;
+
+		final JList jListOfKeys = new JList(colorScheme.getListOfKeys());
+		jListOfKeys.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		jListOfKeys.setLayoutOrientation(JList.VERTICAL);
+		
+		JScrollPane scrollPane = new JScrollPane(jListOfKeys);
+		scrollPane.setAlignmentX(CENTER_ALIGNMENT);
+		scrollPane.setBorder(BorderFactory.createLineBorder(Color.black));
+		scrollPane.setMaximumSize(new Dimension(200,300));
+		
+		JButton button = new JButton("Select Color");
+		button.setAlignmentX(CENTER_ALIGNMENT);
+		button.addActionListener(new ActionListener(){ 
+			public void actionPerformed(ActionEvent e) {
+				
+				popupColorChooser.setVisible(false);
+				popupColorChooser.dispose();
+				popupColorChooser=null;
+				Color color = JColorChooser.showDialog(self, "Change Color", new Color(255,0,0));
+				colorScheme.setColor((String)jListOfKeys.getSelectedValue(), color);
+				applet.loadCurrentlyViewingIsoforms();
+				applet.loadCurrentlyViewingShortReads();
+				
+	        }	
+		});
+		
+		JPanel panel = new JPanel();
+		
+		panel.setLayout(new BoxLayout(panel,BoxLayout.Y_AXIS));
+		panel.add(scrollPane);
+		panel.add(button);
+		
+		popupColorChooser = new JFrame("Choose The Samples To View");
+		popupColorChooser.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		popupColorChooser.setAlwaysOnTop(true);
+		popupColorChooser.setResizable(false);
+		popupColorChooser.setSize(new Dimension(200,300));
+		popupColorChooser.setLocationRelativeTo(this);
+		popupColorChooser.add(panel);
+		popupColorChooser.setVisible(true);
 	}
 	private void loadDistributionAction() {
 		int returnVal = fileChooser.showOpenDialog(JSpliceViewGUI.this);
@@ -503,78 +573,70 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	}
 	private void sampleChooserAction() {
 		if(popupSampleChooser!=null){
-			
-		}else{
-			final JList jListOfSamples = new JList(listOfBamSamples);
-			jListOfSamples.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-			jListOfSamples.setLayoutOrientation(JList.VERTICAL);
-			
-			JScrollPane scrollPane = new JScrollPane(jListOfSamples);
-			scrollPane.setAlignmentX(CENTER_ALIGNMENT);
-			scrollPane.setBorder(BorderFactory.createLineBorder(Color.black));
-			scrollPane.setMaximumSize(new Dimension(200,300));
-			
-			JButton button = new JButton("Load Short Reads");
-			button.setAlignmentX(CENTER_ALIGNMENT);
-			button.addActionListener(new ActionListener(){ 
-				public void actionPerformed(ActionEvent e) {
-					Gene gene = getCurrentlySelectedGene();
-					if(jListOfSamples.getSelectedIndices().length>1){
-						ArrayList<ArrayList<SAMRecord>> listOfSamples = new ArrayList<ArrayList<SAMRecord>>();
-						ArrayList<Integer> listOfCounts = new ArrayList<Integer>();
-						ArrayList<String> listOfNames = new ArrayList<String>();
-						
-						//For each selected sample, load the corresponding short reads and pass it
-						//into the applet with its count
-						for(Object string:jListOfSamples.getSelectedValues()){	
-							listOfNames.add((String) string);
-							listOfSamples.add(getShortReadMatch(gene, nameTo_BamFile.get(string)));
-							listOfCounts.add(bamTo_FileCount.get(nameTo_BamFile.get(string)));	
-						}
-						applet.loadMultipleSamples(listOfNames,listOfSamples,listOfCounts);
-						applet.setMultipleReadsVisible(true);
-						multipleReadsVisibleCheckbox.setSelected(true);
-						multipleReadsVisibleCheckbox.setEnabled(true);
-						
-					}else if (jListOfSamples.getSelectedIndices().length==1){
-						applet.loadSingleReadSample(
-								(String)jListOfSamples.getSelectedValue(),
-								getShortReadMatch(gene,nameTo_BamFile.get(jListOfSamples.getSelectedValue()))); 
-								
-					}else{
-						//Do nothing and close
-					}
-					popupSampleChooser.setVisible(false);
-		            popupSampleChooser.dispose();
-		            popupSampleChooser=null;
-		        }	
-			});
-			
-			JPanel panel = new JPanel();
-			
-			panel.setLayout(new BoxLayout(panel,BoxLayout.Y_AXIS));
-			panel.add(scrollPane);
-			panel.add(button);
-			
-			popupSampleChooser = new JFrame("Choose The Samples To View");
-			popupSampleChooser.setDefaultCloseOperation( JFrame.DO_NOTHING_ON_CLOSE );
-			popupSampleChooser.setLocationRelativeTo(null);
-			popupSampleChooser.setAlwaysOnTop(true);
-			popupSampleChooser.setResizable(false);
-			popupSampleChooser.setSize(new Dimension(200,300));
-			popupSampleChooser.add(panel);
-			popupSampleChooser.setVisible(true);	
+			popupSampleChooser.dispose();
+			popupSampleChooser=null;
 		}
+			
+
+		final JList jListOfSamples = new JList(listOfBamSamples);
+		jListOfSamples.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+		jListOfSamples.setLayoutOrientation(JList.VERTICAL);
 		
+		JScrollPane scrollPane = new JScrollPane(jListOfSamples);
+		scrollPane.setAlignmentX(CENTER_ALIGNMENT);
+		scrollPane.setBorder(BorderFactory.createLineBorder(Color.black));
+		scrollPane.setMaximumSize(new Dimension(200,300));
 		
+		JButton button = new JButton("Load Short Reads");
+		button.setAlignmentX(CENTER_ALIGNMENT);
+		button.addActionListener(new ActionListener(){ 
+			public void actionPerformed(ActionEvent e) {
+				Gene gene = getCurrentlySelectedGene();
+				if(jListOfSamples.getSelectedIndices().length>1){
+					ArrayList<ArrayList<SAMRecord>> listOfSamples = new ArrayList<ArrayList<SAMRecord>>();
+					ArrayList<Integer> listOfCounts = new ArrayList<Integer>();
+					ArrayList<String> listOfNames = new ArrayList<String>();
+					
+					//For each selected sample, load the corresponding short reads and pass it
+					//into the applet with its count
+					for(Object string:jListOfSamples.getSelectedValues()){	
+						listOfNames.add((String) string);
+						listOfSamples.add(getShortReadMatch(gene, nameTo_BamFile.get(string)));
+						listOfCounts.add(bamTo_FileCount.get(nameTo_BamFile.get(string)));	
+					}
+					applet.loadMultipleSamples(listOfNames,listOfSamples,listOfCounts);
+					applet.setMultipleReadsVisible(true);
+					multipleReadsVisibleCheckbox.setSelected(true);
+					multipleReadsVisibleCheckbox.setEnabled(true);
+					
+				}else if (jListOfSamples.getSelectedIndices().length==1){
+					applet.loadSingleReadSample(
+							(String)jListOfSamples.getSelectedValue(),
+							getShortReadMatch(gene,nameTo_BamFile.get(jListOfSamples.getSelectedValue()))); 
+							
+				}else{
+					//Do nothing and close
+				}
+				popupSampleChooser.setVisible(false);
+	            popupSampleChooser.dispose();
+	            popupSampleChooser=null;
+	        }	
+		});
 		
+		JPanel panel = new JPanel();
 		
-//		Gene gene = getCurrentlySelectedGene();
-//		ArrayList<SAMRecord> sample1 = getShortReadMatch(gene, listOfSamRecords.get(0));
-//		ArrayList<SAMRecord> sample2 = getShortReadMatch(gene, listOfSamRecords.get(1));
-//		int sample1Size = bamFileCount.get(listOfSamRecords.get(0));
-//		int sample2Size = bamFileCount.get(listOfSamRecords.get(1));
-//		applet.loadUncollapsed_TwoShortReadSamples(sample1, sample1Size, sample2, sample2Size);
+		panel.setLayout(new BoxLayout(panel,BoxLayout.Y_AXIS));
+		panel.add(scrollPane);
+		panel.add(button);
+		
+		popupSampleChooser = new JFrame("Choose The Samples To View");
+		popupSampleChooser.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		popupSampleChooser.setAlwaysOnTop(true);
+		popupSampleChooser.setResizable(false);
+		popupSampleChooser.setSize(new Dimension(200,300));
+		popupSampleChooser.setLocationRelativeTo(this);
+		popupSampleChooser.add(panel);
+		popupSampleChooser.setVisible(true);
 		
 	}
 	private void saveMenuItemActionPDF() {
@@ -622,7 +684,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 	private int getCurrentOverhang() {
 		return Integer.parseInt(overhangSpinner.getModel().getValue().toString());
 	}
-	private void shortReadChooserAction() {
+	private void readChooserAction() {
 		if(filesLoaded() &&  readChooser.isEnabled()){
 			SAMFileReader samReader = getCurrentlySelectedReader();
 			Gene gene = getCurrentlySelectedGene();
@@ -640,6 +702,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 						gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
 			}else{
 				applet.loadSingleReadSample(bamTo_FileName.get(samReader),getShortReadMatch(gene, samReader));
+				applet.loadArrayOfIsoforms(getCurrentlySelectedMRNAs());
 			}
 		}
 		
@@ -649,6 +712,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		if(e.getSource()==scaleSlider){
 			applet.setYScale(scaleSlider.getValue());
 		}else if (e.getSource()==overhangSpinner){
+			
 			if(getCurrentlySelectedMethod()==2){
 				int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
 				SAMFileReader samReader = getCurrentlySelectedReader();
@@ -664,12 +728,25 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 							getShortReadMatch(gene, samReader),
 							gene.getMRNA().get(isoformList.get(multiIsoformChooser.getSelectedIndex())));	
 				}	
+			}else{
+				int overhang = Integer.parseInt(overhangSpinner.getModel().getValue().toString());
+				SAMFileReader samReader = getCurrentlySelectedReader();
+				int count = 0;
+				if(bamTo_FileCount.get(samReader)!=null){
+					count=bamTo_FileCount.get(samReader);
+				}
+				applet.changeMethod(count,
+						methodComboBox.getSelectedIndex(),
+						overhang,0);
+				Gene gene = getCurrentlySelectedGene();
+				applet.loadArrayOfIsoforms(getCurrentlySelectedMRNAs());
 			}
 		}
 	}
 	private void multipleIsoformChooserAction() {
-		applet.loadArrayOfIsoforms(getCurrentlySelectedMRNAs());
 		applet.loadCurrentlyViewingShortReads();
+		applet.loadArrayOfIsoforms(getCurrentlySelectedMRNAs());
+		
 	}
 	
 	/**
@@ -874,6 +951,7 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		if(filesLoaded()){
 			
 			readCheckBox.setEnabled(true);
+			errorBarsCheckBox.setEnabled(true);
 			multiIsoformChooser.setEnabled(true);
 			collapsed_Weighted.setEnabled(true);
 			uncollapsed_Weighted.setEnabled(true);
@@ -975,7 +1053,12 @@ public class JSpliceViewGUI extends JPanel implements ActionListener,ChangeListe
 		return listOfMRNA;
 	}
 	public double getRPKM(SAMFileReader samFileReader,int totalNumberOfReads){
-		return applet.getRPKM(getShortReadMatch(getCurrentlySelectedGene(), samFileReader), totalNumberOfReads);
+		if(getShortReadMatch(getCurrentlySelectedGene(), samFileReader).size()==0){
+			return 0;
+		}else{
+			return applet.getRPKM(getShortReadMatch(getCurrentlySelectedGene(), samFileReader), totalNumberOfReads);	
+		}
+		
 	}
 	public void mouseClicked(MouseEvent e) {
 		if(e.isMetaDown() && multiIsoformChooser.isEnabled() &&
