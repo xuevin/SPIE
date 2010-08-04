@@ -20,6 +20,7 @@ public class Junction {
 	private double weight;
 	private String isoformID;
 	private ArrayList<Read> listOfReads;
+	private int color;
 	
 	/**
 	 * Instantiates a new junction.
@@ -28,14 +29,15 @@ public class Junction {
 	 * @param iRight the right scled coordinate of a junction
 	 * @param initialHit the initial number of short reads that cross the junction
 	 */
-	public Junction(int iAbsoluteStart, int iAbsoluteEnd,int iLeft,int iRight,int initialHit,String iIsoformID){
+	public Junction(int iAbsoluteStart, int iAbsoluteEnd,int iLeft,int iRight,String iIsoformID,int inputColor){
 		absoluteStart=iAbsoluteStart;
 		absoluteEnd=iAbsoluteEnd;
 		leftScaled=iLeft;
 		rightScaled=iRight;
-		hit=initialHit;
+		hit=0;
 		isoformID=iIsoformID;
 		listOfReads=new ArrayList<Read>();
+		color = inputColor;
 	}
 	
 	/**
@@ -118,9 +120,11 @@ public class Junction {
 		listOfReads.add(read);
 		hit+=1;
 	}
-
 	public ArrayList<Read> getCompatibleReads() {
 		return listOfReads;
+	}
+	public int getColor(){
+		return color;
 	}
 	
 
