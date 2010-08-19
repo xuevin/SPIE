@@ -15,6 +15,7 @@ import net.sf.samtools.util.CloseableIterator;
  * CountReadsInBam is a class that counts the number of reads in a BAM file.
  * It takes in two SAMFileReaders because iterating through a BAM 
  * can take a while and cannot be interupted.
+ * 
  * Instead, the program counts a clone which increases responsivness while users use other features.
  * When it completes counting, it updates a JPanel and puts the count in a HashMap,
  * specified by the programer.

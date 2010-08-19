@@ -4,6 +4,15 @@ package gffParser;
 import java.util.TreeMap;
 
 
+/**
+ * The MRNA class decorates a GFF3
+ * It adds methods to retrieve the unique ID and to establish child relationships with other 
+ * GFF3 objects
+ * 
+ * (MRNA-StartCodon,MRNA-StopCodon,MRNA-CDS,MRNA-Exon)
+ * 
+ * @author Vinny
+ */
 public class MRNA extends GFF3 implements IDHolder{
 	private StartCodon startCodon;
 	private StopCodon stopCodon;
@@ -20,9 +29,17 @@ public class MRNA extends GFF3 implements IDHolder{
 		treeExon= new TreeMap<Integer, Exon>();
 		treeCDS = new TreeMap<Integer, CDS>();
 	}
+	
+	/* (non-Javadoc)
+	 * @see gffParser.IDHolder#getId()
+	 */
 	public String getId() {
 		return ID;
 	}
+	
+	/* (non-Javadoc)
+	 * @see gffParser.IDHolder#addChild(gffParser.GFF3)
+	 */
 	public void addChild(GFF3 child) {
 		if(child instanceof StartCodon){
 			startCodon = (StartCodon) child;
@@ -36,19 +53,35 @@ public class MRNA extends GFF3 implements IDHolder{
 			System.err.println("Some Critical Error Occured. Please Look at MRNA.java");
 		}
 	}
+	
+	/**
+	 * Gets the start codon.
+	 *
+	 * @return the start codon
+	 */
 	public StartCodon getStartCodon(){
 		return startCodon;
 	}
+	
+	/**
+	 * Gets the stop codon.
+	 *
+	 * @return the stop codon
+	 */
 	public StopCodon getStopCodon(){
 		return stopCodon;
 	}
+	/**
+	 * Gets the CDS. (the start position of the CDS is the key)
+	 *
+	 * @return the cDS
+	 */
 	public TreeMap<Integer,CDS> getCDS(){
 		return treeCDS;
 	}
-	
 	/**
-	 * Gets the TreeMap of Exons (the start position of the exon is the key)
-	 * 
+	 * Gets the TreeMap of Exons (the start position of the exon is the key).
+	 *
 	 * @return the exons
 	 */
 	public TreeMap<Integer,Exon> getExons(){

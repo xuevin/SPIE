@@ -3,10 +3,17 @@ package spie;
 import javax.swing.JFrame;
 
 
+/**
+ * The Class Main.
+ */
 public class Main {
 	public static void main(String[] args){
 		createAndShow();
 	}
+	
+	/**
+	 * Creates the and shows the User Interface
+	 */
 	public static void createAndShow(){
 		//Create a JFrame
 		

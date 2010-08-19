@@ -11,7 +11,6 @@ public class ErrorBar {
 	private int scaledXPosition;
 	private String isoformID;
 	private double weight;
-	private Rectangle_Weighted rectangle;
 	private int absoluteStart;
 	private int absoluteEnd;
 	

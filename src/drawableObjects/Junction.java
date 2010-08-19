@@ -25,9 +25,12 @@ public class Junction {
 	/**
 	 * Instantiates a new junction.
 	 *
+	 * @param iAbsoluteStart the absolute start of the junction
+	 * @param iAbsoluteEnd the absolute end of the junction  
 	 * @param iLeft the left scaled coordinate of a junction
 	 * @param iRight the right scled coordinate of a junction
-	 * @param initialHit the initial number of short reads that cross the junction
+	 * @param iIsoformID the isoform this junction is a part of
+	 * @param inputColor the input color
 	 */
 	public Junction(int iAbsoluteStart, int iAbsoluteEnd,int iLeft,int iRight,String iIsoformID,int inputColor){
 		absoluteStart=iAbsoluteStart;
@@ -103,26 +106,67 @@ public class Junction {
 	public int getHits() {
 		return hit;
 	}
+	
+	/**
+	 * Gets the absolute start of the junction
+	 *
+	 * @return the absolute start
+	 */
 	public int getAbsoluteStart(){
 		return absoluteStart;
 	}
+	
+	/**
+	 * Gets the absolute end of the junction
+	 *
+	 * @return the absolute end
+	 */
 	public int getAbsoluteEnd(){
 		return absoluteEnd;
 	}
+	
+	/**
+	 * Gets the isoform id that this junction is from
+	 *
+	 * @return the isoform id
+	 */
 	public String getIsoformID(){
 		return isoformID;
 	}
+	
+	/**
+	 * Gets the scaled middle of the junction
+	 *
+	 * @return the scaled middle
+	 */
 	public int getScaledMiddle(){
 		return (rightScaled-leftScaled)/2+leftScaled;
 	}
 
+	/**
+	 * Adds a read to the array 
+	 *
+	 * @param read the read that spans the junction
+	 */
 	public void addRead(Read read) {
 		listOfReads.add(read);
 		hit+=1;
 	}
-	public ArrayList<Read> getCompatibleReads() {
+	
+	/**
+	 * Gets the reads that span the junction.
+	 *
+	 * @return an arraylist of Reads that span the junction
+	 */
+	public ArrayList<Read> getSpanningReads() {
 		return listOfReads;
 	}
+	
+	/**
+	 * Gets the color of the junction line
+	 *
+	 * @return the color
+	 */
 	public int getColor(){
 		return color;
 	}

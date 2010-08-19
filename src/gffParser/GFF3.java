@@ -2,7 +2,13 @@ package gffParser;
 
 import java.util.HashMap;
 
-
+/**
+ * Each GFF3 object is a row in the GFF3 file. A GFF3 Object can be decorated, 
+ * as see in CDS, Gene, Exon, StartCodon, and StopCodon
+ * 
+ * @author Vincent Xue
+ *
+ */
 public class GFF3 {
 	private String seqID; 	//Col 1
 	private String source;	//Col 2
@@ -14,7 +20,20 @@ public class GFF3 {
 	private int phase;		//Col 8
 	private HashMap <String, String> attributes; //Col 9
 	
-	GFF3(String col1, String col2, String col3, String col4,String col5, 
+	/**
+	 * Instantiates a new gFF3 object.
+	 *
+	 * @param col1 the seqID
+	 * @param col2 the source
+	 * @param col3 the type
+	 * @param col4 the start
+	 * @param col5 the end
+	 * @param col6 the score
+	 * @param col7 the strand
+	 * @param col8 the phase
+	 * @param col9 the string of atributes
+	 */
+	public GFF3(String col1, String col2, String col3, String col4,String col5, 
 			String col6, String col7, String col8, String col9){
 		seqID = col1;
 		source = col2;
@@ -47,9 +66,21 @@ public class GFF3 {
 			attributes.put(temp[0],temp[1]);
 		}
 	}
+	
+	/**
+	 * Gets the seq id.
+	 *
+	 * @return the seq id
+	 */
 	public String getSeqID(){
 		return seqID;
 	}
+	
+	/**
+	 * Gets the source.
+	 *
+	 * @return the source
+	 */
 	public String getSource(){
 		return source;
 	}
@@ -74,15 +105,39 @@ public class GFF3 {
 	public int getEnd(){
 		return end;
 	}
+	
+	/**
+	 * Gets the score.
+	 *
+	 * @return the score
+	 */
 	public double getScore(){
 		return score;
 	}
+	
+	/**
+	 * Gets the strand. (true is coding +, false is noncoding -)
+	 *
+	 * @return the strand
+	 */
 	public boolean getStrand(){
 		return strand;
 	}
+	
+	/**
+	 * Gets the phase.
+	 *
+	 * @return the phase
+	 */
 	public int getPhase(){
 		return phase; 
 	}
+	
+	/**
+	 * Gets the attributes.The key is the name of the identifier in the atributes. (case sensitive)
+	 *
+	 * @return the attributes
+	 */
 	public HashMap<String, String> getAttributes(){
 		return attributes;
 	}

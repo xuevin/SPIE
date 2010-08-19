@@ -13,9 +13,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import com.sun.tools.jdi.EventSetImpl.Itr;
-
-
 import drawableObjects.ErrorBar;
 import drawableObjects.GraphColumn;
 import drawableObjects.Junction;
@@ -34,6 +31,9 @@ import processing.pdf.*;
 import spie.Read;
 import spie.Statistics;
 
+/**
+ * The Class ProcessingApplet.
+ */
 public class ProcessingApplet extends PApplet{
 	public enum View{
 		COLLAPSED_UNWEIGHTED,
@@ -42,6 +42,9 @@ public class ProcessingApplet extends PApplet{
 		UNCOLLAPSED_UNWEIGHTED
 	}
 	
+	/**
+	 * The Class Weighted.
+	 */
 	private abstract class Weighted{
 			protected ArrayList<Junction> junctionList;
 			protected ArrayList<Rectangle_Weighted> weightedIsoforms;
@@ -50,6 +53,15 @@ public class ProcessingApplet extends PApplet{
 			protected ArrayList<Rectangle_Unweighted>referenceIsoforms;
 			protected ArrayList<Label> referenceLabels;
 			
+			/**
+			 * Animated load.
+			 * Loads short read data and animates the rectangles so that they float.
+			 *
+			 * @param pApplet the applet
+			 * @param sampleName the sample name
+			 * @param newSampleReads the new sample reads
+			 * @param isoform the isoform
+			 */
 			public void animatedLoad(ProcessingApplet pApplet,String sampleName,ArrayList<SAMRecord> newSampleReads, MRNA isoform) {
 				junctionList.clear();
 				errorBars.clear();
@@ -85,15 +97,24 @@ public class ProcessingApplet extends PApplet{
 				
 			}
 	
+			/**
+			 * Clears the weighted constitutive rectangles
+			 */
 			public synchronized void clear() {
 				weightedConstitutiveRectangles.clear();
 				
 			}
 	
+			/**
+			 * Draws the weighted isoforms
+			 */
 			public synchronized void draw(){
 				drawWeightedIsoforms();
 			}
 	
+			/**
+			 * Flips the strandess of the isoform
+			 */
 			public synchronized void flip(){
 				for(Rectangle_Weighted rectangle:weightedIsoforms){
 					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
@@ -113,6 +134,13 @@ public class ProcessingApplet extends PApplet{
 				}
 			}
 
+			/**
+			 * Gets the exon from the mouse coordinates.
+			 *
+			 * @param mouseX the mouse x
+			 * @param mouseY the mouse y
+			 * @return the rectangle(exon) at the coordinate
+			 */
 			public Rectangle_Weighted getRectFromCoord(int mouseX, int mouseY) {
 				synchronized (weightedIsoforms) {
 					//Iterate through the array and checks to see if the mouse is over it
@@ -129,6 +157,11 @@ public class ProcessingApplet extends PApplet{
 				return null;	
 			}
 
+			/**
+			 * Load new array of weighted isoforms.
+			 *
+			 * @param listOfMRNA the list of mrna
+			 */
 			public synchronized void loadNewArrayOfWeightedIsoforms(Collection<MRNA> listOfMRNA){
 				if(currentListOfSamples.size()!=0){
 					//Make new arrays
@@ -248,8 +281,9 @@ public class ProcessingApplet extends PApplet{
 							//The difference here is that that the first YStartPosition represents the absolute height
 							//It still needs to be scaled (look at drawWeightedConstitutiveLines)
 							for(Interval interval :listOfConstitutiveIntervals){
+								//if the coding region is engulfed in the constitutive interval
+								int color = convertColor(colorScheme.getConstitutiveColor());
 								if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
-									int color = convertColor(colorScheme.getConstitutiveColor());
 									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
 																								scaleLength(interval.getLength(),listOfIntrons),
 																								20, 
@@ -257,7 +291,33 @@ public class ProcessingApplet extends PApplet{
 																								interval.getEndCoord(), 
 																								mrna.getId(), 
 																								weight, 
-																								color));	
+																								color));
+								//the coding region has the beginning of the interval
+								}else if(	cds.getStart()<=interval.getStartCoord() && //cds start < interval start
+											cds.getEnd()<=interval.getEndCoord() && 	//cds end < interval end
+											cds.getEnd()>=interval.getStartCoord()){ 	//cds end > interval start
+									
+									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
+																								scaleLength((cds.getEnd()-interval.getStartCoord()+1),listOfIntrons),
+																								20, 
+																								interval.getStartCoord(), 
+																								cds.getEnd(), 
+																								mrna.getId(), 
+																								weight, 
+																								color));
+								//the coding region has the end of the interval
+								}else if(	cds.getStart()<=interval.getEndCoord() && 	//cds start < interval end 
+											cds.getEnd()>=interval.getEndCoord() && 	//cds end > interval end
+											cds.getStart()>=interval.getStartCoord()){	//cds start > interval start 
+									weightedConstitutiveRectangles.add(new Rectangle_Weighted(	scalePosition(cds.getStart(),listOfIntrons), 
+																								scaleLength(interval.getEndCoord()-cds.getStart()+1,listOfIntrons),
+																								20, 
+																								cds.getStart(), 
+																								interval.getEndCoord(), 
+																								mrna.getId(), 
+																								weight, 
+																								color));
+									
 								}
 							}
 						}
@@ -297,6 +357,9 @@ public class ProcessingApplet extends PApplet{
 				
 			}
 
+			/**
+			 * Draw error bars.
+			 */
 			private void drawErrorBars(){
 						if(errorBars!=null && errorBarsVisible){
 							synchronized (errorBars) {
@@ -334,10 +397,13 @@ public class ProcessingApplet extends PApplet{
 				}
 			}
 	
+			/**
+			 * Draw mouse hover info.
+			 */
 			private void drawHoverInfo(){
 				Rectangle_Weighted rect =  getRectUnderMouse();
 				if(rect!=null){
-					fill(200,200);
+					fill(200);
 					rect(mouseX,mouseY-20,250,120);
 					fill(0);
 					MRNA isoform = hashOfIsoforms.get(rect.getIsoformID());
@@ -352,6 +418,9 @@ public class ProcessingApplet extends PApplet{
 				}	
 			}
 	
+			/**
+			 * Draw junction lines.
+			 */
 			private void drawJunctionLines() {
 				if(junctionList!=null){
 					synchronized (junctionList) {
@@ -413,6 +482,9 @@ public class ProcessingApplet extends PApplet{
 				
 			}
 	
+			/**
+			 * Draw weighted constitutive rectangles.
+			 */
 			private void drawWeightedConstitutiveRectangles(){
 				if(constitutiveRegionsVisible){
 					synchronized (weightedConstitutiveRectangles) {
@@ -458,6 +530,12 @@ public class ProcessingApplet extends PApplet{
 				drawHoverInfo();
 			}
 	
+			/**
+			 * Fill in the arrays with the scaled junctions.
+			 *
+			 * @param iJunctionList the input junction list
+			 * @param listOfMRNA the list of mrna
+			 */
 			private void fillJunctionList(ArrayList<Junction> iJunctionList,Collection<MRNA> listOfMRNA) {
 
 				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(listOfMRNA);
@@ -498,7 +576,7 @@ public class ProcessingApplet extends PApplet{
 						errorBars.add(new ErrorBar(	weight, 
 													Statistics.getStandardDeviation(junction.getAbsoluteStart(),
 																					junction.getAbsoluteEnd(),
-																					junction.getCompatibleReads()), 
+																					junction.getSpanningReads()), 
 													junction.getAbsoluteStart(),
 													junction.getAbsoluteEnd(),
 													junction.getIsoformID(), 
@@ -507,7 +585,23 @@ public class ProcessingApplet extends PApplet{
 					count++;
 				}
 			}
+			
+			/**
+			 * Scale length.
+			 *
+			 * @param length the length
+			 * @param listOfIntrons the list of introns
+			 * @return the scaled length
+			 */
 			protected abstract int scaleLength(int length,ArrayList<Interval> listOfIntrons);
+			
+			/**
+			 * Scale position.
+			 *
+			 * @param position the position
+			 * @param listOfIntrons the list of introns
+			 * @return the scaled position
+			 */
 			protected abstract int scalePosition(int position,ArrayList<Interval> listOfIntrons);
 			
 	//		protected boolean isARepeat(Rectangle_Weighted inputRect){
@@ -517,18 +611,33 @@ public class ProcessingApplet extends PApplet{
 	//			}
 	//		}
 		}
+	
+	/**
+	 * The Class Unweighted.
+	 */
 	private abstract class Unweighted{
 			protected ArrayList<Rectangle_Unweighted> unweightedIsoforms;
 			protected ArrayList<Rectangle_Unweighted> unweightedConstitutiveRectangle;
 			protected ArrayList<Line> spliceLines;
 			protected ArrayList<Label> unweightedIsoformLabels;
 			
+			/**
+			 * Draw.
+			 */
 			public synchronized void draw() {
 				drawUnweightedIsoforms();
 			}
+			
+			/**
+			 * Clears unweighted constitutive rectangles
+			 */
 			public synchronized void clear() {
 				unweightedConstitutiveRectangle.clear();	
 			}
+			
+			/**
+			 * Flips the strand of the isoform
+			 */
 			public synchronized void flip() {
 				for(Rectangle_Unweighted rectangle: unweightedIsoforms){
 					rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
@@ -542,6 +651,10 @@ public class ProcessingApplet extends PApplet{
 				}
 				
 			}
+			
+			/**
+			 * Draw unweighted isoforms.
+			 */
 			private void drawUnweightedIsoforms() {
 				drawSplicingLines();
 				synchronized (unweightedIsoforms) {
@@ -555,6 +668,10 @@ public class ProcessingApplet extends PApplet{
 				drawUnweightedConstitutiveRects();
 				
 			}
+			
+			/**
+			 * Draw splicing lines.
+			 */
 			private void drawSplicingLines() {
 				if(splicingLinesVisible){
 					synchronized (spliceLines) {
@@ -567,6 +684,10 @@ public class ProcessingApplet extends PApplet{
 				}
 				
 			}
+			
+			/**
+			 * Draw unweighted constitutive rectangles.
+			 */
 			private void drawUnweightedConstitutiveRects() {
 				if(constitutiveRegionsVisible){
 					synchronized (unweightedConstitutiveRectangle) {
@@ -580,6 +701,10 @@ public class ProcessingApplet extends PApplet{
 				
 				
 			}
+			
+			/**
+			 * Draw unweighted isoform labels.
+			 */
 			private void drawUnweightedIsoformLabels() {
 				synchronized (unweightedIsoformLabels) {
 					for(Label label: unweightedIsoformLabels){
@@ -587,154 +712,207 @@ public class ProcessingApplet extends PApplet{
 					}	
 				}
 			}
-	public synchronized void loadNewArrayOfUnweightedIsoforms(Collection<MRNA> isoforms){
-				
-				//Clear Existing Arrays
-				unweightedIsoforms.clear(); 
-				spliceLines.clear();
-				unweightedIsoformLabels.clear(); 
-				unweightedConstitutiveRectangle.clear(); 
-				
-				ArrayList<Interval> listOfConstitutiveIntervals = Statistics.getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
-				
-				
-				//Get a list of the large consitutitive exons
-				ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
-				
-				int yPosition=graphYEnd;
-				
-				for(MRNA mrna : isoforms){
-					ArrayList<Rectangle_Unweighted> sortedRectangles = new ArrayList<Rectangle_Unweighted>();
-					
-					// Exons
-					int cdsColor = convertColor(colorScheme.getCDSColor());
-					int exonColor = convertColor(colorScheme.getExonColor());
-					for(Exon exon:mrna.getExons().values()){
-						int scaledLength= scaleLength(exon.getLength(),listOfIntrons);
-						int scaledStart = scalePosition(exon.getStart(), listOfIntrons);
-						 
-						Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
-																				yPosition+5,
-																				scaledLength, 
-																				10,
-																				exon.getStart(),
-																				exon.getEnd(),
-																				mrna.getId(),
-																				exonColor);
-						unweightedIsoforms.add(temp);
-						sortedRectangles.add(temp);
-						
 	
-						//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
-						for(Interval interval :listOfConstitutiveIntervals){
-							if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
-								int color = convertColor(colorScheme.getConstitutiveColor());;
-								unweightedConstitutiveRectangle.add(
-										new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
-																	yPosition+5, 
-																	scaleLength(interval.getLength(),listOfIntrons), 
-																	10, 
-																	interval.getStartCoord(), 
-																	interval.getEndCoord(), 
-																	mrna.getId(), 
-																	color));
-							}
-						}
-						
-					}
+		/**
+		 * Load new array of unweighted isoforms.
+		 *
+		 * @param isoforms the isoforms
+		 */
+		public synchronized void loadNewArrayOfUnweightedIsoforms(Collection<MRNA> isoforms){
 					
-					//Load CDS
-					for(CDS cds :mrna.getCDS().values()){
-						int scaledLength= scaleLength(cds.getLength(),listOfIntrons);
-						int scaledStart = scalePosition(cds.getStart(),listOfIntrons);
-						
-						Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
-																				yPosition, 
-																				scaledLength, 
-																				20,
-																				cds.getStart(),
-																				cds.getEnd(),
-																				mrna.getId(),
-																				cdsColor);
-						unweightedIsoforms.add(temp);
-						
-						//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
-						for(Interval interval :listOfConstitutiveIntervals){
-							if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
-								int color = convertColor(colorScheme.getConstitutiveColor());
-								unweightedConstitutiveRectangle.add(
-										new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
-																	yPosition, 
-																	scaleLength(interval.getLength(),listOfIntrons), 
-																	20, 
-																	interval.getStartCoord(), 
-																	interval.getEndCoord(), 
-																	mrna.getId(), 
-																	color));
-							}
-						}
-					}
-					
-					//Make Splice lines
-					spliceLines.addAll(getSpliceLines(sortedRectangles, yPosition));
-					
-					
-					//Load Start and Stop Codons
-					int color = convertColor(colorScheme.getStartStopColor());
-					if(mrna.getStartCodon()!=null){
-						int scaledLength= scaleLength(mrna.getStartCodon().getLength(),listOfIntrons);
-						int scaledStart = scalePosition(mrna.getStartCodon().getStart(),listOfIntrons);
-						
-						unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
-																			yPosition,
+			//Clear Existing Arrays
+			unweightedIsoforms.clear(); 
+			spliceLines.clear();
+			unweightedIsoformLabels.clear(); 
+			unweightedConstitutiveRectangle.clear(); 
+			
+			ArrayList<Interval> listOfConstitutiveIntervals = Statistics.getConstitutiveIntervals(tempConstitutiveUnscaledPositions);
+			
+			
+			//Get a list of the large consitutitive exons
+			ArrayList<Interval> listOfIntrons = getLargeConstitutiveIntrons(isoforms);
+			
+			int yPosition=graphYEnd;
+			
+			for(MRNA mrna : isoforms){
+				ArrayList<Rectangle_Unweighted> sortedRectangles = new ArrayList<Rectangle_Unweighted>();
+				
+				// Exons
+				int cdsColor = convertColor(colorScheme.getCDSColor());
+				int exonColor = convertColor(colorScheme.getExonColor());
+				for(Exon exon:mrna.getExons().values()){
+					int scaledLength= scaleLength(exon.getLength(),listOfIntrons);
+					int scaledStart = scalePosition(exon.getStart(), listOfIntrons);
+					 
+					Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
+																			yPosition+5,
 																			scaledLength, 
-																			20,
-																			mrna.getStartCodon().getStart(),
-																			mrna.getStartCodon().getEnd(),
+																			10,
+																			exon.getStart(),
+																			exon.getEnd(),
 																			mrna.getId(),
-																			color));	
+																			exonColor);
+					unweightedIsoforms.add(temp);
+					sortedRectangles.add(temp);
+					
+	
+					//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
+					for(Interval interval :listOfConstitutiveIntervals){
+						if(interval.getStartCoord()>=exon.getStart()&&interval.getEndCoord()<=exon.getEnd()){
+							int color = convertColor(colorScheme.getConstitutiveColor());;
+							unweightedConstitutiveRectangle.add(
+									new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
+																yPosition+5, 
+																scaleLength(interval.getLength(),listOfIntrons), 
+																10, 
+																interval.getStartCoord(), 
+																interval.getEndCoord(), 
+																mrna.getId(), 
+																color));
+						}
 					}
-					if(mrna.getStopCodon()!=null){
-						int scaledLength= scaleLength(mrna.getStopCodon().getLength(),listOfIntrons);
-						int scaledStart = scalePosition(mrna.getStopCodon().getStart(),listOfIntrons);
-						unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
-																			yPosition,
-																			scaledLength, 
-																			20,
-																			mrna.getStopCodon().getStart(),
-																			mrna.getStopCodon().getEnd(),
-																			mrna.getId(),
-																			color));
-					}
-					unweightedIsoformLabels.add(new Label(mrna.getId(), 10, yPosition+20));
-					yPosition+=30;
+					
 				}
-				if(!isCodingStrand){
-					if(unweightedIsoforms!=null){
-						for(Rectangle_Unweighted rectangle:unweightedIsoforms){
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
-						}	
-					}
-					if(spliceLines!=null){
-						for(Line line:spliceLines){	
-							line.setXCoordStart(reverse(line.getXCoordStart()));
-							line.setXCoordEnd(reverse(line.getXCoordEnd()));
-						}	
-					}
-					if(unweightedConstitutiveRectangle!=null){
-						for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
-							rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+				
+				//Load CDS
+				for(CDS cds :mrna.getCDS().values()){
+					int scaledLength= scaleLength(cds.getLength(),listOfIntrons);
+					int scaledStart = scalePosition(cds.getStart(),listOfIntrons);
+					
+					Rectangle_Unweighted temp = new Rectangle_Unweighted(	scaledStart,
+																			yPosition, 
+																			scaledLength, 
+																			20,
+																			cds.getStart(),
+																			cds.getEnd(),
+																			mrna.getId(),
+																			cdsColor);
+					unweightedIsoforms.add(temp);
+					
+					//Fill In the constitutitive sites per exon by iterating through each constitutitve interval
+					for(Interval interval :listOfConstitutiveIntervals){
+						int color = convertColor(colorScheme.getConstitutiveColor());
+						if(interval.getStartCoord()>=cds.getStart()&&interval.getEndCoord()<=cds.getEnd()){
+							
+							unweightedConstitutiveRectangle.add(
+									new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons),
+																yPosition, 
+																scaleLength(interval.getLength(),listOfIntrons), 
+																20, 
+																interval.getStartCoord(), 
+																interval.getEndCoord(), 
+																mrna.getId(), 
+																color));
+						}else if(	cds.getStart()<=interval.getStartCoord() && //cds start < interval start
+									cds.getEnd()<=interval.getEndCoord() && 	//cds end < interval end
+									cds.getEnd()>=interval.getStartCoord()){ 	//cds end > interval start
+							
+							unweightedConstitutiveRectangle.add(new Rectangle_Unweighted(	scalePosition(interval.getStartCoord(),listOfIntrons), 
+																							yPosition,
+																							scaleLength((cds.getEnd()-interval.getStartCoord()+1),listOfIntrons),
+																							20, 
+																							interval.getStartCoord(), 
+																							cds.getEnd(), 
+																							mrna.getId(),  
+																							color));
+						//the coding region has the end of the interval
+						}else if(	cds.getStart()<=interval.getEndCoord() && 	//cds start < interval end 
+									cds.getEnd()>=interval.getEndCoord() && 	//cds end > interval end
+									cds.getStart()>=interval.getStartCoord()){	//cds start > interval start 
+							unweightedConstitutiveRectangle.add(new Rectangle_Unweighted(	scalePosition(cds.getStart(),listOfIntrons), 
+																							yPosition,
+																							scaleLength(interval.getEndCoord()-cds.getStart()+1,listOfIntrons),
+																							20, 
+																							cds.getStart(), 
+																							interval.getEndCoord(), 
+																							mrna.getId(), 
+																							color));
+							
 						}
+					}
+				}
+				
+				//Make Splice lines
+				spliceLines.addAll(getSpliceLines(sortedRectangles, yPosition));
+				
+				
+				//Load Start and Stop Codons
+				int color = convertColor(colorScheme.getStartStopColor());
+				if(mrna.getStartCodon()!=null){
+					int scaledLength= scaleLength(mrna.getStartCodon().getLength(),listOfIntrons);
+					int scaledStart = scalePosition(mrna.getStartCodon().getStart(),listOfIntrons);
+					
+					unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
+																		yPosition,
+																		scaledLength, 
+																		20,
+																		mrna.getStartCodon().getStart(),
+																		mrna.getStartCodon().getEnd(),
+																		mrna.getId(),
+																		color));	
+				}
+				if(mrna.getStopCodon()!=null){
+					int scaledLength= scaleLength(mrna.getStopCodon().getLength(),listOfIntrons);
+					int scaledStart = scalePosition(mrna.getStopCodon().getStart(),listOfIntrons);
+					unweightedIsoforms.add(new Rectangle_Unweighted(	scaledStart, 
+																		yPosition,
+																		scaledLength, 
+																		20,
+																		mrna.getStopCodon().getStart(),
+																		mrna.getStopCodon().getEnd(),
+																		mrna.getId(),
+																		color));
+				}
+				unweightedIsoformLabels.add(new Label(mrna.getId(), 10, yPosition+20));
+				yPosition+=30;
+			}
+			if(!isCodingStrand){
+				if(unweightedIsoforms!=null){
+					for(Rectangle_Unweighted rectangle:unweightedIsoforms){
+						rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
 					}	
 				}
-				
-				
-			}
-			protected abstract int scaleLength(int length,ArrayList<Interval> listOfIntrons);
-			protected abstract int scalePosition(int position,ArrayList<Interval> listOfIntrons);
+				if(spliceLines!=null){
+					for(Line line:spliceLines){	
+						line.setXCoordStart(reverse(line.getXCoordStart()));
+						line.setXCoordEnd(reverse(line.getXCoordEnd()));
+					}	
+				}
+				if(unweightedConstitutiveRectangle!=null){
+					for(Rectangle_Unweighted rectangle:unweightedConstitutiveRectangle){
+						rectangle.setScaledXCoord(reverse(rectangle.getScaledXCoord()+rectangle.getScaledLength()));
+					}
+				}	
+			}	
 		}
+		
+		/**
+		 * Scale length.
+		 *
+		 * @param length the length
+		 * @param listOfIntrons the list of introns
+		 * @return the scaled length
+		 */
+		protected abstract int scaleLength(int length,ArrayList<Interval> listOfIntrons);
+		
+		/**
+		 * Scale position.
+		 *
+		 * @param position the position
+		 * @param listOfIntrons the list of introns
+		 * @return the scaled position
+		 */
+		protected abstract int scalePosition(int position,ArrayList<Interval> listOfIntrons);
+	}
+	
+	/**
+	 * The Class Uncollapsed_Weighted.
+	 */
 	private class Uncollapsed_Weighted extends Weighted{
 		
+		/**
+		 * Instantiates a new uncollapsed weighted view.
+		 */
 		public Uncollapsed_Weighted() {
 			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
 			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
@@ -744,19 +922,33 @@ public class ProcessingApplet extends PApplet{
 			junctionList = new ArrayList<Junction>();
 		}
 	
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Weighted#scaleLength(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scaleLength(int length,
 				ArrayList<Interval> listOfIntrons) {
 			return (int)map(length,0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
 		}
 	
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Weighted#scalePosition(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scalePosition(int position,
 				ArrayList<Interval> listOfIntrons) {
 			return scaleAbsoluteCoord_Uncollapsed(position);
 		}
 	}
+	
+	/**
+	 * The Class Collapsed_Weighted.
+	 */
 	private class Collapsed_Weighted extends Weighted{
+		
+		/**
+		 * Instantiates a new collapsed weighted view
+		 */
 		public Collapsed_Weighted() {
 			weightedIsoforms=new ArrayList<Rectangle_Weighted>();
 			weightedConstitutiveRectangles = new ArrayList<Rectangle_Weighted>();
@@ -765,6 +957,10 @@ public class ProcessingApplet extends PApplet{
 			errorBars = new ArrayList<ErrorBar>();
 			junctionList = new ArrayList<Junction>();
 		}
+		
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Weighted#scaleLength(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scaleLength(int length,
 				ArrayList<Interval> listOfIntrons) {
@@ -775,14 +971,24 @@ public class ProcessingApplet extends PApplet{
 			return (int)map(length,0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
 		}
 	
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Weighted#scalePosition(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scalePosition(int position,
 				ArrayList<Interval> listOfIntrons) {
 			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
 		}
 	}
+	
+	/**
+	 * The Class Collapsed_Unweighted.
+	 */
 	private class Collapsed_Unweighted extends Unweighted{
 	
+		/**
+		 * Instantiates a new collapsed_unweighted view.
+		 */
 		public Collapsed_Unweighted(){
 			unweightedConstitutiveRectangle = new ArrayList<Rectangle_Unweighted>();
 			spliceLines=new ArrayList<Line>();
@@ -792,6 +998,9 @@ public class ProcessingApplet extends PApplet{
 		
 		
 	
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Unweighted#scaleLength(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scaleLength(int length,
 				ArrayList<Interval> listOfIntrons) {
@@ -802,13 +1011,24 @@ public class ProcessingApplet extends PApplet{
 			return (int)map(length,0,absoluteLengthOfGene-sum+(listOfIntrons.size()*200),0,graphXEnd-graphXStart);
 		}
 	
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Unweighted#scalePosition(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scalePosition(int position,
 				ArrayList<Interval> listOfIntrons) {
 			return scaleAbsoluteCoord_Collapsed(position, listOfIntrons);
 		}
 	}
+	
+	/**
+	 * The Class Uncollapsed_Unweighted.
+	 */
 	private class Uncollapsed_Unweighted extends Unweighted{	
+		
+		/**
+		 * Instantiates a new uncollapsed unweighted view
+		 */
 		public Uncollapsed_Unweighted(){
 			spliceLines = new ArrayList<Line>();
 			unweightedIsoforms=new ArrayList<Rectangle_Unweighted>();
@@ -817,11 +1037,18 @@ public class ProcessingApplet extends PApplet{
 			
 		}
 			
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Unweighted#scaleLength(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scaleLength(int length,
 				ArrayList<Interval> listOfIntrons) {
 			return (int)map(length,0,absoluteLengthOfGene,0,graphXEnd-graphXStart);
 		}
+		
+		/* (non-Javadoc)
+		 * @see spie.ProcessingApplet.Unweighted#scalePosition(int, java.util.ArrayList)
+		 */
 		@Override
 		protected int scalePosition(int position,
 				ArrayList<Interval> listOfIntrons) {
@@ -893,7 +1120,6 @@ public class ProcessingApplet extends PApplet{
 		customListOfIsoforms = new ArrayList<MRNA>();
 		multipleReadsVisible=false;
 		
-		
 		readsPlotToDraw = new ArrayList<ArrayList<GraphColumn>>();
 		distributionPlot = new ArrayList<GraphColumn>();
 		readsPlotVisible=true;
@@ -903,11 +1129,7 @@ public class ProcessingApplet extends PApplet{
 		errorBarsVisible = true;
 		
 		tempConstitutiveUnscaledPositions=new ArrayList<Integer>();
-		customConstitutiveUnscaledPositions = new ArrayList<Integer>();
-		
-		
-
-		
+		customConstitutiveUnscaledPositions = new ArrayList<Integer>();	
 		
 		//----
 		currentListOfBamCounts = new ArrayList<Integer>();
@@ -921,6 +1143,12 @@ public class ProcessingApplet extends PApplet{
 		readPlotYStart =600;
 		readsPlotHeight=80;
 	}
+	
+	/**
+	 * Sets the view.
+	 *
+	 * @param iView the new view
+	 */
 	public void setView(View iView){
 		view=iView;
 	}
@@ -958,15 +1186,14 @@ public class ProcessingApplet extends PApplet{
 		
 		background(255);
 		//text(frameRate,20,20);
+		drawReadsPlot();
 		switch(view){
 			case UNCOLLAPSED_UNWEIGHTED:uncollapsed_Unweighted.draw();break;
 			case UNCOLLAPSED_WEIGHTED:uncollapsed_Weighted.draw();break;
 			case COLLAPSED_UNWEIGHTED:collapsed_Unweighted.draw();break;
 			case COLLAPSED_WEIGHTED:collapsed_Weighted.draw();break;
 		}
-		drawReadsPlot();
 		drawLabelForHeight();
-		drawDistrubition();
 		
 		
 		if(recordPDF){
@@ -975,14 +1202,6 @@ public class ProcessingApplet extends PApplet{
 		    textFont(loadFont("Calibri-16.vlw"));
 		}
 		
-	}
-	private void drawDistrubition() {
-		stroke(0);
-		for(GraphColumn column:distributionPlot){
-			System.out.println(column.getScaledX() + " " + column.getScaledHeight());
-			line(column.getScaledX(),readPlotYStart,column.getScaledX(),readPlotYStart-column.getScaledHeight());
-		}
-
 	}
 	/**
 	 * Draws a label that describes the height at each xCoordinate.
@@ -1053,12 +1272,24 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 	}
+	
+	/* (non-Javadoc)
+	 * @see processing.core.PApplet#mouseDragged()
+	 * 
+	 * If the mouse is dragged while hovering over the reads plot, the reads plot is scaled
+	 */
 	public void mouseDragged(){
 		if(mouseY<readPlotYStart&&mouseY>readPlotYStart-readsPlotHeight){
 			readsPlotHeight=(readsPlotHeight+(pmouseY-mouseY));
 			line(graphXStart,readPlotYStart-readsPlotHeight,graphXEnd,readPlotYStart-readsPlotHeight);
 		}	
 	}
+	
+	/* (non-Javadoc)
+	 * @see processing.core.PApplet#mouseReleased()
+	 * 
+	 * Once the mouse has been released, the reads plot is redrawn
+	 */
 	public void mouseReleased(){
 		if(currentListOfBamCounts.size()==currentListOfSamples.size() &&
 			currentListOfSampleNames.size()==currentListOfSamples.size()){
@@ -1068,6 +1299,9 @@ public class ProcessingApplet extends PApplet{
 		}
 	}
 	
+	/**
+	 * Draw reads plot.
+	 */
 	private void drawReadsPlot(){
 		if(readsPlotVisible){
 			synchronized (readsPlotToDraw) {
@@ -1134,9 +1368,24 @@ public class ProcessingApplet extends PApplet{
 	public void setSpliceLinesVisible(boolean bool) {
 		splicingLinesVisible=bool;
 	}
+	
+	/**
+	 * Load array of isoforms, maintaining the strand
+	 *
+	 * @param listOfMRNA the list of mrna
+	 */
 	public void loadArrayOfIsoforms(ArrayList<MRNA> listOfMRNA){
 		loadNewArrayOfIsoforms(listOfMRNA, absoluteStartOfGene, absoluteLengthOfGene, isCodingStrand);
 	}
+	
+	/**
+	 * Load new array of isoforms.
+	 *
+	 * @param isoforms the isoforms
+	 * @param iAbsoluteStartOfGene the i absolute start of gene
+	 * @param iAbsoluteLengthOfGene the i absolute length of gene
+	 * @param strand the strand
+	 */
 	public synchronized void loadNewArrayOfIsoforms(Collection<MRNA> isoforms,int iAbsoluteStartOfGene,int 
 			iAbsoluteLengthOfGene, boolean strand){
 		//clear the constitutitve if you are viewing a new gene
@@ -1190,6 +1439,13 @@ public class ProcessingApplet extends PApplet{
 			}
 		}
 	}
+	
+	/**
+	 * Load single read sample.
+	 *
+	 * @param sampleName the sample name
+	 * @param iSamRecords the i sam records
+	 */
 	public synchronized void loadSingleReadSample(String sampleName, ArrayList<SAMRecord> iSamRecords){
 		currentListOfSamples.clear();
 		currentListOfSampleNames.clear();
@@ -1210,6 +1466,13 @@ public class ProcessingApplet extends PApplet{
 		}
 	}
 	
+	/**
+	 * Load multiple samples.
+	 *
+	 * @param listOfSampleNames the list of sample names
+	 * @param listOfSamples the list of samples
+	 * @param listOfBamCounts the list of bam counts
+	 */
 	public synchronized void loadMultipleSamples(
 			ArrayList<String> listOfSampleNames,
 			ArrayList<ArrayList<SAMRecord> >listOfSamples,
@@ -1280,12 +1543,20 @@ public class ProcessingApplet extends PApplet{
 //			return false;
 //		}
 	}
-	public synchronized void loadCurrentlyViewingIsoforms(){
+	
+	/**
+	 * Reload currently viewing isoforms.
+	 */
+	public synchronized void reloadCurrentlyViewingIsoforms(){
 				loadNewArrayOfIsoforms(	currentlyViewingIsoforms,
 										absoluteStartOfGene,
 										absoluteLengthOfGene,
 										isCodingStrand);
 	}
+	
+	/**
+	 * Load currently viewing short reads.
+	 */
 	public void loadCurrentlyViewingShortReads() {
 		if(currentListOfSamples.size()!=0){
 			if(multipleReadsVisible){
@@ -1299,6 +1570,12 @@ public class ProcessingApplet extends PApplet{
 		}
 				
 	}
+	
+	/**
+	 * Gets the custom list of isoforms.
+	 *
+	 * @return the custom list of isoforms
+	 */
 	public ArrayList<MRNA> getCustomListOfIsoforms(){
 		return customListOfIsoforms;
 	}
@@ -1310,6 +1587,12 @@ public class ProcessingApplet extends PApplet{
 	public void setYScale(int iYScale){
 		yScale=iYScale;
 	}
+	
+	/**
+	 * Sets the constitutive regions visible.
+	 *
+	 * @param bool the new constitutive regions visible
+	 */
 	public void setConstitutiveRegionsVisible(boolean bool) {
 		constitutiveRegionsVisible=bool;
 		
@@ -1325,6 +1608,14 @@ public class ProcessingApplet extends PApplet{
 		tempConstitutiveUnscaledPositions.clear();
 		customConstitutiveUnscaledPositions.clear();		
 	}
+	
+	/**
+	 * Animated load reads.
+	 *
+	 * @param sampleName the sample name
+	 * @param newSampleReads the new sample reads
+	 * @param isoform the isoform
+	 */
 	public synchronized void animatedLoadReads(String sampleName,ArrayList<SAMRecord> newSampleReads,MRNA isoform) {
 		switch(view){
 			case UNCOLLAPSED_UNWEIGHTED: loadSingleReadSample(sampleName,newSampleReads); break;//Do Nothing
@@ -1336,6 +1627,15 @@ public class ProcessingApplet extends PApplet{
 		
 		
 	}
+	
+	/**
+	 * Change method.
+	 *
+	 * @param totalNumberOfReads the total number of reads
+	 * @param method the method
+	 * @param iOverhang the i overhang
+	 * @param iReadLength the i read length
+	 */
 	public void changeMethod(int totalNumberOfReads,int method,int iOverhang,int iReadLength) {
 		//TODO make sure that changing bam samples also calls this method... (may have to implement it in load single read)
 		
@@ -1355,10 +1655,26 @@ public class ProcessingApplet extends PApplet{
 			Statistics.setMethod(Statistics.Method.COVERAGEPEREXON);
 		}
 	}
+	
+	/**
+	 * Gets the RPKM of a gene
+	 *
+	 * @param samRecords the sam records
+	 * @param totalNumberOfReads the total number of reads
+	 * @return the RPKM
+	 */
 	public double getRPKM(ArrayList<SAMRecord> samRecords,int totalNumberOfReads) {
 		return Statistics.getRPKM(samRecords, Statistics.getConstitutiveIntervals(customConstitutiveUnscaledPositions),totalNumberOfReads);
 		
 	}
+	
+	/**
+	 * Gets the splice lines.
+	 *
+	 * @param exonsToSort the exons to sort
+	 * @param yPosition the y position
+	 * @return the splice lines
+	 */
 	private ArrayList<Line> getSpliceLines(ArrayList<Rectangle_Unweighted> exonsToSort,int yPosition){
 		
 		ArrayList<Line> spliceLineArray = new ArrayList<Line>();
@@ -1382,13 +1698,7 @@ public class ProcessingApplet extends PApplet{
 			scaledLastExonY=rect.getScaledYCoord();
 		}
 		return spliceLineArray;		
-	}
-	
-	//This is how you will do zooming
-	private void drawWindow(int startCoord, int endCoord){
-		
-	}
-		
+	}		
 	/**
 	 * Gets the short read density height at the specified xPixel
 	 * 
@@ -1426,6 +1736,15 @@ public class ProcessingApplet extends PApplet{
 			return "Empty";
 		}
 	}
+	
+	/**
+	 * Gets the rectangle nearest to x coord. (for putting constitutive rectangles at the right height)
+	 *
+	 * @param listOfRectangles the list of rectangles
+	 * @param mrnaID the mrna id
+	 * @param iXCoord the i x coord
+	 * @return the rectangle nearest to x coord
+	 */
 	private Rectangle_Weighted getRectangleNearestToXCoord(ArrayList<Rectangle_Weighted> listOfRectangles,String mrnaID ,float iXCoord){
 		//Gets the rectangle closest to the specified xCoord by cycling through;
 		Rectangle_Weighted closest = null;
@@ -1448,13 +1767,38 @@ public class ProcessingApplet extends PApplet{
 		}
 		return closest;
 	}
+	
+	/**
+	 * Reverse a value
+	 *
+	 * @param position the position
+	 * @return the int
+	 */
 	private int reverse(int position){
 		return (graphXEnd-position)+graphXStart;
 	}
+	
+	/**
+	 * Scale absolute coord uncollapsed.
+	 *
+	 * @param inCoord the in coord
+	 * @return the int
+	 */
 	private int scaleAbsoluteCoord_Uncollapsed(int inCoord){
 		return mapToInt(inCoord,absoluteStartOfGene,absoluteEndOfGene,
 				graphXStart,graphXEnd);
 	}
+	
+	/**
+	 * Re-maps a number from one range to another. 
+	 *
+	 * @param value the value
+	 * @param low1 the low1
+	 * @param high1 the high1
+	 * @param low2 the low2
+	 * @param high2 the high2
+	 * @return the int
+	 */
 	public int mapToInt(int value, int low1, int high1, int low2, int high2){
 		 
 			
@@ -1472,6 +1816,14 @@ public class ProcessingApplet extends PApplet{
 		
 
 	}
+	
+	/**
+	 * Scale absolute coord_collapsed.
+	 *
+	 * @param value the value
+	 * @param intervalsToExclude the intervals to exclude
+	 * @return the int
+	 */
 	private int scaleAbsoluteCoord_Collapsed(int value,ArrayList<Interval> intervalsToExclude){
 		//Find the sum of the lengths of the introns that are less than the position.
 		int sum=0;
@@ -1527,6 +1879,12 @@ public class ProcessingApplet extends PApplet{
 		}		
 	}
 
+	/**
+	 * Gets the large constitutive introns.
+	 *
+	 * @param isoforms the isoforms
+	 * @return the large constitutive introns
+	 */
 	private ArrayList<Interval> getLargeConstitutiveIntrons(
 			Collection<MRNA> isoforms) {
 		//Make a hashmap that represents all the positions available on the gene
@@ -1575,6 +1933,14 @@ public class ProcessingApplet extends PApplet{
 		}
 		return listOfIntrons;
 	}
+	
+	/**
+	 * Fill scaled reads plot.
+	 *
+	 * @param readsSample the reads sample
+	 * @param densityMap the density map
+	 * @param isoforms the isoforms
+	 */
 	private synchronized void fillScaledReadsPlot(ArrayList<GraphColumn> readsSample,
 				HashMap<Integer,Integer> densityMap,ArrayList<MRNA> isoforms){
 			
@@ -1646,9 +2012,21 @@ public class ProcessingApplet extends PApplet{
 		recordPDF =true;
 		
 	}
+	
+	/**
+	 * Sets the multiple reads visible.
+	 *
+	 * @param bool the new multiple reads visible
+	 */
 	public void setMultipleReadsVisible(boolean bool){
 		multipleReadsVisible=bool;
 	}
+	
+	/**
+	 * Load distribution. //TODO INCOMPLETE!
+	 *
+	 * @param distributionArrayList the distribution array list
+	 */
 	public synchronized void loadDistribution(ArrayList<Integer> distributionArrayList) {
 		Iterator<Integer> itr = distributionArrayList.iterator();
 		distributionPlot.clear();
@@ -1704,9 +2082,22 @@ public class ProcessingApplet extends PApplet{
 		}
 		System.out.println(distributionPlot.size());
 	}
+	
+	/**
+	 * Sets the error bars visible.
+	 *
+	 * @param bool the new error bars visible
+	 */
 	public void setErrorBarsVisible(boolean bool) {
 		errorBarsVisible=bool;		
 	}
+	
+	/**
+	 * Convert color.
+	 *
+	 * @param color the color(AWT)
+	 * @return the int(Processing)
+	 */
 	public int convertColor(Color color){
 		return color(color.getRed(),color.getGreen(),color.getBlue());
 	}

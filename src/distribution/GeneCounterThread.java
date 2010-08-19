@@ -1,8 +1,11 @@
-package spie;
+package distribution;
 
 import gffParser.Gene;
 
 import java.util.ArrayList;
+
+import spie.Interval;
+import spie.Statistics;
 
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMRecord;

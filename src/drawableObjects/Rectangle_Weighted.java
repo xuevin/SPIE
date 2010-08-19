@@ -86,21 +86,58 @@ public class Rectangle_Weighted{
 	public int getAbsoluteEnd(){
 		return absoluteEnd;
 	}
+	
+	/**
+	 * Gets the scaled length of the rectangle
+	 *
+	 * @return the scaled length
+	 */
 	public int getScaledLength(){
 		return scaledLength;
 	}
+	
+	/**
+	 * Gets the scaled x coord of the rectangle
+	 *
+	 * @return the scaled x coord
+	 */
 	public int getScaledXCoord(){
 		return scaledXCoord;
 	}
+	
+	/**
+	 * Sets the scaled x coord of the rectangle.
+	 * (Used for flipping)
+	 *
+	 * @param iScaledXCoord the new scaled x coord
+	 */
 	public void setScaledXCoord(int iScaledXCoord){
 		scaledXCoord=iScaledXCoord;
 	}
+	
+	/**
+	 * Gets the color of the rectangle
+	 *
+	 * @return the color
+	 */
 	public int getColor(){
 		return color;
 	}
+	
+	/**
+	 * Gets the scaled height of the rectangle
+	 *
+	 * @return the scaled height
+	 */
 	public int getScaledHeight(){
 		return scaledHeight;
 	}
+	
+	/**
+	 * Gets the isoform id that this rectangle is representing
+	 *
+	 * @return the isoform id
+	 */
 	public String getIsoformID(){
 		return isoformID;
 	}

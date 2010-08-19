@@ -328,30 +328,30 @@ public class Statistics {
 						//check if case of single interval
 						if(samInterval.size()==1){
 							if(exon.getStart()<=samInterval.get(0).getStartCoord() && exon.getEnd()>=samInterval.get(0).getEndCoord()){
-//								System.out.println(" Body Read ");
+								//System.out.println(" Body Read ");
 								newShortRead.addExons(exon);
 								return newShortRead;
 							}else{
-//								System.out.println("Not Found In any Exon");
+								//System.out.println("Not Found In any Exon");
 								return null;
 							}
 						}
 						//If not the case of a single interval, check if the short read interval at least
 						//ends with the exon end
 						if(exon.getEnd()==samInterval.get(0).getEndCoord()){
-//							System.out.print(" 0-I&E ");
+							//System.out.print(" 0-I&E ");
 							newShortRead.addExons(exon);
 							found = true;
 							i++;
 							break;
 						}else{
-//							System.out.println(" 0-I*E ");
+							//System.out.println(" 0-I*E ");
 							return null;
 						}
 					}
 				}
 				if(found==false){
-//					System.out.println("No Exons found that contain the short read start");
+					//System.out.println("No Exons found that contain the short read start");
 					return null;	
 				}
 				
@@ -359,22 +359,22 @@ public class Statistics {
 			if(i!=samInterval.size()-1){// check if the interval is completely within an exon
 				Exon exon = itr.next();
 				if(exon.getStart()==samInterval.get(i).getStartCoord() && exon.getEnd()==samInterval.get(i).getEndCoord()){
-//						System.out.print(" " + i +"-I&E");
+						//System.out.print(" " + i +"-I&E");
 					newShortRead.addExons(exon);
 					i++;
 				}else{
-//					System.out.println(" " + i +"-I*E");
+					//System.out.println(" " + i +"-I*E");
 					return null;
 				}
 			}
 			if(i==samInterval.size()-1){ //Check if the last interval is within the last exon
 				Exon exon = itr.next();
 				if(exon.getStart()==samInterval.get(i).getStartCoord() && exon.getEnd()>=samInterval.get(i).getEndCoord()){
-//					System.out.println(" Junction Read ");
+					//System.out.println(" Junction Read ");
 					newShortRead.addExons(exon);
 					return newShortRead;	
 				}else{
-//					System.out.println(" " + i +"-No End Match");
+					//System.out.println(" " + i +"-No End Match");
 					return null;
 				}
 			}
@@ -531,15 +531,30 @@ public class Statistics {
 		overhang = iOverhang;
 		
 	}
+	
+	/**
+	 * Gets the weight of junction.
+	 *
+	 * @param junction the junction
+	 * @return the weight of junction
+	 */
 	public static double getWeightOfJunction(Junction junction) {
 		switch(method){
 			case COVERAGEPEREXON: return junction.getHits();
 			case RPK: return 0;
 			case RPKM: return (double)junction.getHits()/((double)((readLength-1)-2*(overhang-1))/1000)/(totalNumberOfReads/1000000); 
-			default: return 10;
-			//FIXME getting junction weights
+			default: return 0;
 		}	
 	}
+	
+	/**
+	 * Gets the rPKM.
+	 *
+	 * @param allSAMRecord the all sam record
+	 * @param constitutiveIntervals the constitutive intervals
+	 * @param totalNumberOfReads the total number of reads
+	 * @return the rPKM
+	 */
 	public static double getRPKM(ArrayList<SAMRecord> allSAMRecord, ArrayList<Interval> constitutiveIntervals,int totalNumberOfReads){
 		Statistics.setTotalNumberOfReads(totalNumberOfReads);
 		Statistics.setReadLength(allSAMRecord.get(0).getCigar().getReadLength());
@@ -571,6 +586,13 @@ public class Statistics {
 		//System.out.println((count/denominator)/((double)totalNumberOfReads/1000000));
 		return (count/denominator)/((double)totalNumberOfReads/1000000);
 	}
+	
+	/**
+	 * Gets the constitutive intervals.
+	 *
+	 * @param inputArrayOfConstitutivePositions the input array of constitutive positions
+	 * @return the constitutive intervals
+	 */
 	public static ArrayList<Interval> getConstitutiveIntervals(ArrayList<Integer> inputArrayOfConstitutivePositions){
 		
 		ArrayList<Interval> listOfIntervals = new ArrayList<Interval>();

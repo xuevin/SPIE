@@ -1,5 +1,10 @@
 package gffParser;
 
+/**
+ * The Exon class decorates a GFF3
+ * 
+ * @author Vincent Xue
+ */
 public class Exon extends GFF3{
 
 	public Exon(String col1, String col2, String col3, String col4, String col5,

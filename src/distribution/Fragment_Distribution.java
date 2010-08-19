@@ -134,7 +134,7 @@ public class Fragment_Distribution {
 		System.out.println("Parsing GFF3");
 		GFF3Parser parser = new GFF3Parser();
 		parser.parse(file);
-		HashMap<String,Gene> hashOfGenes= parser.getGenes();
+		HashMap<String,Gene> hashOfGenes= parser.getHashOfGenes();
 		System.out.println("Parsing Finished");
 		parser=null; //Will this clear some memory?
 		

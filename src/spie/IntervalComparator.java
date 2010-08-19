@@ -5,6 +5,9 @@ import java.util.Comparator;
 import drawableObjects.Rectangle_Unweighted;
 
 
+/**
+ * The Class IntervalComparator. (Compares based on start coordinates)
+ */
 public class IntervalComparator implements Comparator<Interval>{
 	public IntervalComparator(){
 		

@@ -1,6 +1,11 @@
 package gffParser;
 
 
+/**
+ * The StopCodon class decorates a GFF3
+ * 
+ * @author Vincent Xue
+ */
 public class StopCodon extends GFF3{
 
 	public StopCodon(String col1, String col2, String col3, String col4, String col5,
