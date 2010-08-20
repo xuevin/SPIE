@@ -18,6 +18,7 @@ import drawableObjects.GraphColumn;
 import drawableObjects.Junction;
 import drawableObjects.Label;
 import drawableObjects.Line;
+import drawableObjects.Node;
 import drawableObjects.RectangleComparator;
 import drawableObjects.Rectangle_Unweighted;
 import drawableObjects.Rectangle_Weighted;
@@ -39,11 +40,74 @@ public class ProcessingApplet extends PApplet{
 		COLLAPSED_UNWEIGHTED,
 		COLLAPSED_WEIGHTED,
 		UNCOLLAPSED_WEIGHTED,
-		UNCOLLAPSED_UNWEIGHTED
+		UNCOLLAPSED_UNWEIGHTED,
+		NODES_AND_EDGES
 	}
-	
+	private class NodesAndEdges{
+		private ArrayList<Node> listOfNodes = new ArrayList<Node>();
+		
+		public void draw(){
+			for(Node node:listOfNodes){
+				
+			}	
+		}
+		public void loadNewArrayOfWeightedIsoforms(Collection<MRNA> iIsoforms) {
+			for(MRNA mrna:iIsoforms){
+				Iterator<Exon> exonItr = mrna.getExons().values().iterator();
+				
+				Node nodeToAddSiblingTo = null;
+				while(exonItr.hasNext()){
+					Exon exon = exonItr.next();					
+					Node existingNodeWithSameCoord = getExisitingNodeWithSameCoords(new Node(exon));
+					
+					
+					if(existingNodeWithSameCoord!=null){	
+						
+						//If it is the first node, the next node has is its sibling
+						if(nodeToAddSiblingTo!=null){
+							nodeToAddSiblingTo.addSibling(existingNodeWithSameCoord);	
+						}
+							
+						nodeToAddSiblingTo=existingNodeWithSameCoord;
+					}else{
+						Node temp = new Node(exon);
+						nodeToAddSiblingTo.addSibling(temp);
+						listOfNodes.add(temp);
+						nodeToAddSiblingTo=temp;
+					}
+					
+					
+					
+					
+					
+				}
+
+			}
+			
+		}
+		public void mousePressed() {
+			// TODO Auto-generated method stub
+			
+		}
+		public void mouseDragged(){
+			
+		}
+		public Node getExisitingNodeWithSameCoords(Node iNode){
+			for(Node node:listOfNodes){
+				if(node.coordEquals(iNode)){
+					return node;
+				}
+			}
+			return null;
+		}
+		
+	}
 	/**
 	 * The Class Weighted.
+	 */
+	/**
+	 * @author Vinny
+	 *
 	 */
 	private abstract class Weighted{
 			protected ArrayList<Junction> junctionList;
@@ -134,15 +198,17 @@ public class ProcessingApplet extends PApplet{
 				}
 			}
 
+			
 			/**
-			 * Gets the exon from the mouse coordinates.
+			 * Gets the exons from the mouse coordinates.
 			 *
 			 * @param mouseX the mouse x
 			 * @param mouseY the mouse y
-			 * @return the rectangle(exon) at the coordinate
+			 * @return the rectangles(exon) at the coordinate
 			 */
-			public Rectangle_Weighted getRectFromCoord(int mouseX, int mouseY) {
+			public ArrayList<Rectangle_Weighted> getRectsFromCoord(int mouseX, int mouseY) {
 				synchronized (weightedIsoforms) {
+					ArrayList<Rectangle_Weighted> listOfRects = new ArrayList<Rectangle_Weighted>();
 					//Iterate through the array and checks to see if the mouse is over it
 					for(Rectangle_Weighted rect:weightedIsoforms){
 						if(	mouseX>rect.getScaledXCoord() &&
@@ -150,11 +216,11 @@ public class ProcessingApplet extends PApplet{
 							mouseY>(graphYStart-rect.getWeight()*yScale-rect.getScaledHeight()/2) && 
 							mouseY<(graphYStart-rect.getWeight()*yScale+rect.getScaledHeight()/2) &&
 							rect.getScaledHeight()==10){
-							return rect;
+							listOfRects.add(rect);
 						}
-					}	
-				}
-				return null;	
+					}
+					return listOfRects;
+				}	
 			}
 
 			/**
@@ -401,19 +467,25 @@ public class ProcessingApplet extends PApplet{
 			 * Draw mouse hover info.
 			 */
 			private void drawHoverInfo(){
-				Rectangle_Weighted rect =  getRectUnderMouse();
-				if(rect!=null){
-					fill(200);
-					rect(mouseX,mouseY-20,250,120);
-					fill(0);
-					MRNA isoform = hashOfIsoforms.get(rect.getIsoformID());
-					text("Isoform:" + rect.getIsoformID()+
-						"\nStart:\t"+rect.getAbsoluteStart() + 
-						"\nEnd: \t " + rect.getAbsoluteEnd()+
-						"\nLength:\t" + rect.getAbsoluteLength() +
-						"\n#Body Reads:\t" +  Statistics.getNumberOfBodyReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), currentListOfSamples.get(0)) + 
-						"\n#Junction Reads:\t" + Statistics.getNumberOfJunctionReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), currentListOfSamples.get(0))
-						,mouseX+10,mouseY);
+				
+				ArrayList<Rectangle_Weighted> listOfRects =  getRectsUnderMouse();
+				if(listOfRects!=null && listOfRects.size()!=0){
+					int start=0;
+					for(Rectangle_Weighted rect:listOfRects){						
+						fill(200);
+						rect(mouseX+start,mouseY-20,250,120);
+						fill(0);
+						MRNA isoform = hashOfIsoforms.get(rect.getIsoformID());
+						text("Isoform:" + rect.getIsoformID()+
+								"\nStart:\t"+rect.getAbsoluteStart() + 
+								"\nEnd: \t " + rect.getAbsoluteEnd()+
+								"\nLength:\t" + rect.getAbsoluteLength() +
+								"\n#Body Reads:\t" +  Statistics.getNumberOfBodyReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), currentListOfSamples.get(0)) + 
+								"\n#Junction Reads:\t" + Statistics.getNumberOfJunctionReads(isoform, rect.getAbsoluteStart(), rect.getAbsoluteEnd(), currentListOfSamples.get(0))
+								,mouseX+10+start,mouseY);
+						start+=250;
+					}
+					
 						
 				}	
 			}
@@ -886,6 +958,17 @@ public class ProcessingApplet extends PApplet{
 			}	
 		}
 		
+		public void mousePressed(){
+			if(mouseButton==RIGHT){
+				int indexToRemove = (mouseY+5-graphYEnd)/30;
+				if(indexToRemove>=0&&indexToRemove<currentlyViewingIsoforms.size()){
+					currentlyViewingIsoforms.remove(indexToRemove);
+					loadArrayOfIsoforms(currentlyViewingIsoforms);
+					customListOfIsoforms=currentlyViewingIsoforms;
+				}
+				customConstitutiveUnscaledPositions=tempConstitutiveUnscaledPositions;
+			}
+		}
 		/**
 		 * Scale length.
 		 *
@@ -1059,6 +1142,7 @@ public class ProcessingApplet extends PApplet{
 	private Collapsed_Unweighted collapsed_Unweighted = new Collapsed_Unweighted();
 	private Uncollapsed_Weighted uncollapsed_Weighted = new Uncollapsed_Weighted();
 	private Uncollapsed_Unweighted uncollapsed_Unweighted = new Uncollapsed_Unweighted();
+	private NodesAndEdges nodesAndEdges = new NodesAndEdges();
 
 	private static final long serialVersionUID = 1L;
 	private int width;
@@ -1099,6 +1183,7 @@ public class ProcessingApplet extends PApplet{
 	private int overhang;
 	private int readLength;
 	private ColorScheme colorScheme;
+
 	
 	
 	/**
@@ -1192,6 +1277,7 @@ public class ProcessingApplet extends PApplet{
 			case UNCOLLAPSED_WEIGHTED:uncollapsed_Weighted.draw();break;
 			case COLLAPSED_UNWEIGHTED:collapsed_Unweighted.draw();break;
 			case COLLAPSED_WEIGHTED:collapsed_Weighted.draw();break;
+			case NODES_AND_EDGES:nodesAndEdges.draw();break;
 		}
 		drawLabelForHeight();
 		
@@ -1242,34 +1328,17 @@ public class ProcessingApplet extends PApplet{
 	 * list currentlyViewingIsoforms and constitutive sites are recalculated
 	 */
 	public void mousePressed(){
-		if(mouseButton==RIGHT){
-			//remove a mrna
-			//reload with new list
-			switch(view){
-				case UNCOLLAPSED_UNWEIGHTED:{
-					int indexToRemove = (mouseY+5-graphYEnd)/30;
-					if(indexToRemove>=0&&indexToRemove<currentlyViewingIsoforms.size()){
-						currentlyViewingIsoforms.remove(indexToRemove);
-						loadArrayOfIsoforms(currentlyViewingIsoforms);
-						customListOfIsoforms=currentlyViewingIsoforms;
-					}
-					customConstitutiveUnscaledPositions=tempConstitutiveUnscaledPositions;
-					break;
-				}
-				case UNCOLLAPSED_WEIGHTED:break;//Do Nothing
-				case COLLAPSED_UNWEIGHTED:{
-					int indexToRemove = (mouseY+5-graphYEnd)/30;
-					if(indexToRemove>=0&&indexToRemove<currentlyViewingIsoforms.size()){
-						currentlyViewingIsoforms.remove(indexToRemove);
-						loadArrayOfIsoforms(currentlyViewingIsoforms);
-						customListOfIsoforms=currentlyViewingIsoforms;
-					}
-					customConstitutiveUnscaledPositions=tempConstitutiveUnscaledPositions;
-					break;
-				}
-				case COLLAPSED_WEIGHTED:break;//Do Nothing
-				
-			}
+		
+		//remove a mrna
+		//reload with new list
+		switch(view){
+			case UNCOLLAPSED_UNWEIGHTED: uncollapsed_Unweighted.mousePressed(); break;
+			
+			case UNCOLLAPSED_WEIGHTED:break;//Do Nothing
+			case COLLAPSED_UNWEIGHTED: collapsed_Unweighted.mousePressed(); break;
+			case COLLAPSED_WEIGHTED:break;//Do Nothing
+			case NODES_AND_EDGES: nodesAndEdges.mousePressed(); break;
+			
 		}
 	}
 	
@@ -1282,7 +1351,13 @@ public class ProcessingApplet extends PApplet{
 		if(mouseY<readPlotYStart&&mouseY>readPlotYStart-readsPlotHeight){
 			readsPlotHeight=(readsPlotHeight+(pmouseY-mouseY));
 			line(graphXStart,readPlotYStart-readsPlotHeight,graphXEnd,readPlotYStart-readsPlotHeight);
-		}	
+		}
+		switch (view) {
+		case NODES_AND_EDGES:nodesAndEdges.mouseDragged();
+			break;
+		default:
+			break;
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -1435,6 +1510,10 @@ public class ProcessingApplet extends PApplet{
 			}
 			case COLLAPSED_WEIGHTED:{
 				collapsed_Weighted.loadNewArrayOfWeightedIsoforms(isoforms);
+				break;
+			}
+			case NODES_AND_EDGES:{
+				nodesAndEdges.loadNewArrayOfWeightedIsoforms(isoforms);
 				break;
 			}
 		}
@@ -1862,19 +1941,19 @@ public class ProcessingApplet extends PApplet{
 	}
 
 	/**
-	 * Gets the Rectangle underneath the mouse.
+	 * Gets the Rectangles underneath the mouse.
 	 * 
 	 * Iterates through the array of weightedIsoforms and checks to see if the mouse is over it.
-	 * If so, it returns the rectangle.
+	 * If so, it returns a list of rectangles that are underneath the mouse position
 	 * 
-	 * @return a Rectangle_Weighted that is underneath the mouse coordinates. If there is none, return is null 
+	 * @return an ArrayList of Rectangle_Weighted that is underneath the mouse coordinates. If there is none, return is null 
 	 */
-	private Rectangle_Weighted getRectUnderMouse(){
+	private ArrayList<Rectangle_Weighted> getRectsUnderMouse(){
 		switch(view){
 			case UNCOLLAPSED_UNWEIGHTED:return null; //TODO
-			case UNCOLLAPSED_WEIGHTED: return uncollapsed_Weighted.getRectFromCoord(mouseX,mouseY);
+			case UNCOLLAPSED_WEIGHTED: return uncollapsed_Weighted.getRectsFromCoord(mouseX,mouseY);
 			case COLLAPSED_UNWEIGHTED: return null;//TODO
-			case COLLAPSED_WEIGHTED: return collapsed_Weighted.getRectFromCoord(mouseX,mouseY);
+			case COLLAPSED_WEIGHTED: return collapsed_Weighted.getRectsFromCoord(mouseX,mouseY);
 			default:return null;
 		}		
 	}
